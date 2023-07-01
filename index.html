@@ -132,14 +132,14 @@
               <div style="font-size:10px; min-height: 14px; text-align: top;">{{s[0]}}</div>
               <div style="font-size: 8px; margin-top: -2px; color:gray">{{s[1]}}</div>
             </td>
-            <td style="padding-left: 5px;">{{frequency.ic_mono().toString().slice(0,5)}}</td>
+            <td style="padding-left: 5px;">{{frequency.ic_mono().toString().slice(0,6)}}</td>
           </tr>
           <tr class="monospace frequency" style="border-top: 1px solid darkgray;">
             <td v-for="(s) in eyes.frequency_totals.sorted" style="padding-top: 3px;">
               <div style="font-size:10px; min-height: 14px; text-align: top;">{{s[0]}}</div>
               <div style="font-size: 8px; margin-top: -1px; max-width:10px; color:gray">{{s[1]}}</div>
             </td>
-            <td style="padding-left: 5px;">{{eyes.frequency_totals.ic_mono().toString().slice(0,5)}}</td>
+            <td style="padding-left: 5px;">{{eyes.frequency_totals.ic_mono().toString().slice(0,6)}}</td>
           </tr>
         </table>
       </div>
@@ -240,7 +240,7 @@
             <span class="">{{eyes.isomorphs_min_count.get()}}</span>
             <button class="btn monospace" v-on:click="eyes.isomorphs_min_count.add(1)">+</button>
           </td> 
-          <td style="vertical-align: middle;">
+          <td style="vertical-align: middle; padding-left: 5px;">
             <input v-model="eyes.isomorphs_fit_length.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
           </td>
           <td>

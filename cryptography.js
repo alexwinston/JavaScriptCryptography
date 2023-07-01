@@ -467,9 +467,10 @@ class Frequencies {
     ic_mono() {
         var ic = 0
         for (var a in this.f) {
-            ic += (this.f[a]/this.s.length)**2
+            // ic += (this.f[a]/this.s.length)**2
+            ic += this.f[a] * (this.f[a] - 1)
         }
-        return ic
+        return ic / (this.s.length * (this.s.length - 1))
     }
 
     // MILCRYP1 pg 41
