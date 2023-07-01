@@ -154,6 +154,15 @@ class Eyes {
         return "transparent"
     }
 
+    ratio_color(length, min, max) {
+        if (length) {
+            const ratio = this.color_gradient.length / (max - min + 1)
+            const color = Math.round((length - min) * ratio)
+            return this.color_gradient[color]
+        }
+        return "transparent"
+    }
+
     alignment_color(i,j) {
         if (!this.alignment_unique.get()) { return this.char_color(this.alignments[i][j]) }
         return this.alignment_unique_color(i,j)
@@ -178,13 +187,7 @@ class Eyes {
     }
 
     gap_color(length) {
-        // if (this.gaps[i].has(j)) { return RGB.spread(this.gaps[i].get(j).length) }
-        if (length) {
-            const ratio = this.color_gradient.length / (this.gaps_max.get() - this.gaps_min.get() + 1)
-            const color = Math.round((length - this.gaps_min.get()) * ratio)
-            return this.color_gradient[color]
-        }
-        return "transparent"
+        return this.ratio_color(length, this.gaps_min.get(), this.gaps_max.get())
     }
 
     isomorph_length(i,j) {
@@ -194,7 +197,7 @@ class Eyes {
     }
 
     isomorph_color(i,j) {
-        return this.gap_color(this.isomorph_length(i,j))
+        return this.ratio_color(this.isomorph_length(i,j), 1, this.isomorphs_max_length.get())
     }
 
     isomorph(messages_gaps, max_length, min_pairs, min_count, fit_length) {
