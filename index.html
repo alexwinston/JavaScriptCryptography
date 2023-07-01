@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.1/bignumber.min.js"></script> -->
+
+  <script src="cryptography.js"></script>
+  <script src="cryptography-visualize.js"></script>
+
+  <script src="noita.js"></script>
+  <script src="noita-visualize.js"></script>
+
+  <script src="vue2.min.js"></script>
+
+  <script>
+  </script>
+
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,300' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Consolas:400,600,300' rel='stylesheet' type='text/css'>
+  <style>
+    body {
+      font-family: "Open Sans", sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+    }
+    table {
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 0px;
+    }
+    .header {
+      padding: 5px 0px 0px 2px;
+      border-bottom:1px solid lightgrey;
+      width: 90%
+    }
+    .header tr {
+      display: inline-block;
+    }
+
+    .btn {
+      vertical-align: middle;
+      padding: 0px 3px 0px 3px;
+    }
+    .btn-toggle + span {
+      margin: 0px 0px 0px 0px;
+      padding: 0px 4px 0px 4px;
+      border-width: 1px 0px 1px 0px;
+      border-color:black;
+      border-style: solid;
+      font-size: 12px; 
+    }
+
+    .monospace {
+      /* font-family: Courier, monospace; */
+      font-family: "Consolas", monospace;
+      font-size: 12px;
+      min-width: 7px;
+    }
+
+    .messages {
+      padding-top: 5px;
+      
+      width: fit-content;
+    }
+
+    tr:nth-child(even) {
+      background-color: rgb(240, 239, 239);
+    }
+
+    .gaps td {
+      /* display: inline-block; */
+      display: inline-flex;
+      /* mix-blend-mode: difference; */
+    }
+    .gap-counts {
+      padding: 0px 5px 2px 0px;
+    }
+    .gap-count {
+      vertical-align: middle;
+      padding: 0px 2px 0px 2px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body style="margin-bottom: 100px;">
+  <body>
+    <!-- https://www.smashingmagazine.com/2020/01/data-components-vue-js/ -->
+    <script type="text/x-template" id="hello-template" :worker="worker" >
+      <div>Hello, {{worker.name}}! Age: {{worker.age}}
+        <button v-on:click="worker.live()">Live</button>
+      </div>
+    </script>
+    
+    <!-- TODO Switch decodings -->
+    <div id="app">
+      <!-- Messages -->
+      <!-- <hello :worker="ceo"></hello> -->
+      <table class="header gaps" style="margin: 15px 0px 0px 0px;">
+        <tr>
+          <td class="gap-counts" style="vertical-align: text-top;">Messages:</td>
+          <td style="vertical-align: middle;">
+            <input v-model="eyes.text_editing.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
+          </td>
+          <td>
+            <span class="monospace">edit</span>
+          </td>
+        </tr>
+      </table>
+      <div v-if="eyes.text_editing.value" style="margin-top: 5px;">
+        <textarea v-model="eyes.text" @input="eyes.on_change()" class="monospace" style="font-size: 12px; width: 90%; height: 125px;"></textarea>
+      </div>
+      <div v-else class="messages">
+        <table>
+          <tr v-for="message in eyes.messages">
+            <td v-for="(c) in message" class="monospace" :style="{ backgroundColor: eyes.char_color(c) }">
+              <div>{{c}}</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Analysis -->
+      <div class="header" style="margin: 15px 0px 0px 0px;">Analysis</div>
+      <div style="margin-top: 3px;">
+        <table>
+          <tr class="messages" style="font-size: 14px;">
+            <td colspan="83">Frequencies</td>
+            <td style="padding-left: 5px;">IC</td>
+          </tr>
+          <tr v-for="frequency in eyes.frequencies" class="monospace frequency">
+            <td v-for="(s) in frequency.sorted" style="min-width:10px;">
+              <div style="font-size:10px; min-height: 14px; text-align: top;">{{s[0]}}</div>
+              <div style="font-size: 8px; margin-top: -2px; color:gray">{{s[1]}}</div>
+            </td>
+            <td style="padding-left: 5px;">{{frequency.ic_mono().toString().slice(0,5)}}</td>
+          </tr>
+          <tr class="monospace frequency" style="border-top: 1px solid darkgray;">
+            <td v-for="(s) in eyes.frequency_totals.sorted" style="padding-top: 3px;">
+              <div style="font-size:10px; min-height: 14px; text-align: top;">{{s[0]}}</div>
+              <div style="font-size: 8px; margin-top: -1px; max-width:10px; color:gray">{{s[1]}}</div>
+            </td>
+            <td style="padding-left: 5px;">{{eyes.frequency_totals.ic_mono().toString().slice(0,5)}}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- <div class="messages" style="font-size: 14px;">N-grams</div> -->
+
+      <!-- Alignments Header -->
+      <table class="header gaps" style="margin: 15px 0px 0px 0px;">
+        <tr>
+          <td class="gap-counts" style="vertical-align: text-top;">Alignments:</td>
+          <td style="vertical-align: middle;">
+            <input v-model="eyes.alignment_unique.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
+          </td>
+          <td>
+            <span class="monospace">unique</span>
+          </td>
+        </tr>
+      </table>
+      <!-- Alignments -->
+      <div class="messages">
+        <table>
+          <tr v-for="(message,i) in eyes.messages">
+            <td v-for="(c,j) in message" class="monospace" :style="{ backgroundColor: eyes.alignment_color(i,j) }">
+              <div>{{c}}</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+          
+      <!-- Gaps Header -->
+      <table class="header gaps" style="margin:15px 0px 0px 0px;">
+        <tr>
+          <td class="gap-counts" style="vertical-align: text-top;">Gaps:</td>
+          <td style="vertical-align: middle;">
+            <input v-model="eyes.gaps_aligned.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
+          </td>
+          <td>
+            <span class="monospace">aligned</span>
+          </td>
+          <td style="vertical-align: middle;">
+            <input v-model="eyes.gap_ends.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
+          </td>
+          <td>
+            <span class="monospace">ends</span>
+          </td>
+          <td class="gap-counts" style="padding-right: 3px;">
+            <button class="btn btn-toggle monospace" v-on:click="eyes.gaps_min.add(-1)">-</button>
+            <span class="">{{eyes.gaps_min.get()}}</span>
+            <button class="btn monospace" v-on:click="eyes.gaps_min.add(1)">+</button>
+          </td> 
+          <td class="gap-counts" style="padding-right: 5px;">
+            <button class="btn btn-toggle monospace" v-on:click="eyes.gaps_max.add(-1)">-</button>
+            <span class="">{{eyes.gaps_max.get()}}</span>
+            <button class="btn monospace" v-on:click="eyes.gaps_max.add(1)">+</button>
+            <button class="btn monospace" v-on:click="eyes.gaps_max.set(eyes.messages_max)">></button>
+          </td> 
+          <td v-for="gap in eyes.gap_counts" class="gap-count">
+            <span :style="{ backgroundColor: eyes.gap_color(gap[0]) }">{{gap[0]}}</span>:<span>{{gap[1]}}</span>
+          </td> 
+        </tr>
+      </table>
+      <!-- Gaps -->
+      <div class="messages">
+        <table>
+          <tr v-for="(message,i) in eyes.messages">
+            <td v-for="(c,j) in message" class="monospace" :style="{ backgroundColor: eyes.gap_color(eyes.gap_length(i,j)) }">
+              <div>{{c}}</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Isomorphs Header -->
+      <table class="header gaps" style="margin: 15px 0px 0px 0px;">
+        <tr>
+          <td class="gap-counts" style="vertical-align: text-top;">Isomorphs:</td>
+          <td>
+            <span class="monospace">length</span>
+          </td>
+          <td class="gap-counts" style="padding-right: 3px;">
+            <button class="btn btn-toggle monospace" v-on:click="eyes.isomorphs_max_length.add(-1)">-</button>
+            <span class="">{{eyes.isomorphs_max_length.get()}}</span>
+            <button class="btn monospace" v-on:click="eyes.isomorphs_max_length.add(1)">+</button>
+          </td>
+          <td>
+            <span class="monospace">pairs</span>
+          </td>
+          <td class="gap-counts" style="padding-right: 3px;">
+            <button class="btn btn-toggle monospace" v-on:click="eyes.isomorphs_min_pairs.add(-1)">-</button>
+            <span class="">{{eyes.isomorphs_min_pairs.get()}}</span>
+            <button class="btn monospace" v-on:click="eyes.isomorphs_min_pairs.add(1)">+</button>
+          </td> 
+          <td>
+            <span class="monospace">count</span>
+          </td>
+          <td class="gap-counts" style="padding-right: 3px;">
+            <button class="btn btn-toggle monospace" v-on:click="eyes.isomorphs_min_count.add(-1)">-</button>
+            <span class="">{{eyes.isomorphs_min_count.get()}}</span>
+            <button class="btn monospace" v-on:click="eyes.isomorphs_min_count.add(1)">+</button>
+          </td> 
+          <td style="vertical-align: middle;">
+            <input v-model="eyes.isomorphs_fit_length.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
+          </td>
+          <td>
+            <span class="monospace">fit</span>
+          </td>
+        </tr>
+      </table>
+      <!-- Isomorphs -->
+      <div class="messages">
+        <table>
+          <tr v-for="(message,i) in eyes.messages">
+            <td v-for="(c,j) in message" class="monospace" :style="{ backgroundColor: eyes.isomorph_color(i,j) }">
+              <div>{{c}}</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- app -->
+    </div>
+
+    <script>
+      Vue.component('hello', {
+        template: '#hello-template',
+        props: {
+          worker: Worker   
+        }
+      })
+      new Vue({
+        el: '#app',
+        data: {
+          eyes: eyes,
+        }
+      })
+    </script>
+</body>
+</body>
+</html>

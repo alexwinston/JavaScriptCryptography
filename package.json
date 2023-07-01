@@ -1,0 +1,18 @@
+{
+  "name": "Hackers",
+  "version": "1.0.0",
+  "description": "Hackers game",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "serve": "lite-server",
+    "start": "npm run watch & npm run serve",
+    "clean": "rm -rf dist"
+  },
+  "author": "Alex Winston",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^4.4.4",
+    "lite-server": "^2.6.1"
+  }
+}
