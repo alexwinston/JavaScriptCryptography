@@ -1,7 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.1/bignumber.min.js"></script> -->
+  <meta charset="utf-8">
+
+  <link href='css/fonts.css' rel='stylesheet' type='text/css'>
+
+  <script src="canvasjs.min.js"></script>
+
+  <script src="vue2.min.js"></script>
+  <script src="vue2-loader.min.js"></script>
 
   <script src="cryptography.js"></script>
   <script src="cryptography-visualize.js"></script>
@@ -9,14 +16,12 @@
   <script src="noita.js"></script>
   <script src="noita-visualize.js"></script>
 
-  <script src="vue2.min.js"></script>
-
-  <link href='css/fonts.css' rel='stylesheet' type='text/css'>
   <style>
     body {
       font-family: "Open Sans", sans-serif;
+      /* font-family: "Arial", sans-serif; */
       font-weight: 400;
-      font-size: 16px;
+      font-size: 14px;
     }
     table {
       border-collapse: collapse;
@@ -25,7 +30,7 @@
       padding: 0px;
     }
     .header {
-      padding: 5px 0px 0px 2px;
+      padding: 5px 0px 2px 2px;
       border-bottom:1px solid lightgrey;
       width: 90%
     }
@@ -36,6 +41,7 @@
     .btn {
       vertical-align: middle;
       padding: 0px 3px 0px 3px;
+      line-height: 12px;
     }
     .btn-toggle + span {
       margin: 0px 0px 0px 0px;
@@ -45,18 +51,41 @@
       border-style: solid;
       font-size: 12px; 
     }
+    .btn-alert {
+      background-color: #dc3545;
+      /* cursor: pointer; */
+      color: white;
+      font-weight:bold;
+      border: 1px solid #dc3545;
+      border-radius: 3px;
+      padding:3px 6px 3px 6px;
+      /* text-decoration: none; */
+    }
+    .btn-alert:active {
+        background-color: rgb(166, 50, 50);
+    }
 
     .monospace {
-      /* font-family: Courier, monospace; */
       font-family: "Consolas", monospace;
+      /* font-family: "Tahoma", monospace; */
       font-size: 12px;
       min-width: 7px;
     }
 
     .messages {
       padding-top: 5px;
-      
       width: fit-content;
+
+      /* border: 1px solid lightgray;
+      padding: 5px;
+      border-radius: 5px; */
+    }
+
+    .btn-randomize {
+      right: 0;
+      position: absolute;
+      margin-top: 10px;
+      margin-right: 11%;
     }
 
     tr:nth-child(even) {
@@ -76,202 +105,211 @@
       padding: 0px 2px 0px 2px;
       font-size: 12px;
     }
+    .sticky {
+      position: sticky;
+      z-index: 1000;
+      top:0;
+      background-color:white;
+      padding-bottom: 5px;
+    }
+
+    .vue-mzc-modal {
+      --vue-mzc-modal-overlay-color: rgba(0,0,0, 0.5);
+      --vue-mzc-modal-box-gap: 20px;
+      --vue-mzc-modal-box-width: 80%;
+      --vue-mzc-modal-box-border-radius: 10px;
+      --vue-mzc-modal-box-title-size: 1.25em;
+      --vue-mzc-modal-box-text-color: #000000;
+      --vue-mzc-modal-box-background-color: #ffffff;
+      --vue-mzc-modal-box-close-image: url("data:image/svg+xml,%3Csvg width='14' height='14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M7 8.4 1.4 14 0 12.6 5.6 7 0 1.4 1.4 0 7 5.6 12.6 0 14 1.4 8.4 7l5.6 5.6-1.4 1.4L7 8.4Z' fill='%23ACBAC6'/%3E%3C/svg%3E");
+
+      /* --vue-mzc-modal-box-close-image: url("data:image/svg+xml..."); */
+    }
+    .vue-mzc-modal-box {
+      font-size: 12px;
+    }
+    .vue-mzc-modal-box__header {
+      margin-bottom: 5px !important;
+      padding-right: 20px !important;
+    }
+    .vue-mzc-modal table td {
+      display: inline-flex;
+    }
+    .vue-mzc-modal table tr:nth-child(odd) {
+      background-color: rgb(244, 244, 244);
+    }
+    .vue-mzc-modal table tr:nth-child(even) {
+      background-color: rgb(249, 249, 249);
+    }
   </style>
 </head>
 <body style="margin-bottom: 100px;">
-  <body>
     <!-- https://www.smashingmagazine.com/2020/01/data-components-vue-js/ -->
-    <script type="text/x-template" id="hello-template" :worker="worker" >
-      <div>Hello, {{worker.name}}! Age: {{worker.age}}
-        <button v-on:click="worker.live()">Live</button>
+    <script type="text/x-template" id="messages-template">
+      <!-- Text -->
+      <div :class="{ sticky: analysis.encrypt.value }">
+        <div class="header">
+          <table class="gaps" style="margin: 15px 0px 0px 0px;">
+            <tr>
+              <td class="gap-counts" style="vertical-align: text-top;">Text:</td>
+              <td>
+                <span class="monospace">edit</span>
+              </td>
+              <td style="vertical-align: middle;">
+                <input v-model="analysis.text_editing.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
+              </td>
+              <td>
+                <span class="monospace" style="padding-left:5px;">az</span>
+              </td>
+              <td style="vertical-align: middle;">
+                <input v-model="analysis.az.value" style="margin: 0px -1px 1px 0px; width: 40rem; font-size: 11px;" type="text">
+              </td>
+              <td>
+                <button @click="analysis.az_shuffle()">Shuffle</button>&nbsp;
+                <button @click="analysis.az_reset()">Reset</button>
+              </td>
+            </tr>
+            <tr v-if="analysis.encrypt.value">
+              <span class="monospace" style="padding-left: 65px;">cipher</span> <input v-model="analysis.cipher.value" style="margin: 0px -1px 1px 0px; width: 800px; font-size: 12px;" type="text">
+              <button @click="view.cipher_help.show(analysis)" class="btn-alert">Help</button>
+            </tr>
+          </table>
+        </div>
+        <button class="btn-randomize" @click="analysis.text_randomize()">Randomize</button>
+        <div v-if="analysis.text_editing.value" style="margin-top: 5px;">
+          <textarea v-model="analysis.text" @input="analysis.on_change()" class="monospace" style="font-size: 12px; width: 90%; height: 125px;"></textarea>
+        </div>
+        <div v-else class="messages">
+          <table>
+            <tr v-for="message in analysis.messages">
+              <td v-for="(c) in message" class="monospace" :style="{ backgroundColor: analysis.char_color(c) }">
+                <div>{{c}}</div>
+              </td>
+            </tr>
+          </table>
+        </div>
       </div>
     </script>
-    
+
+    <script type="text/x-template" id="frequency-template">
+      <!-- Frequency -->
+      <div>
+        <!-- <div class="header" style="margin: 15px 0px 0px 0px;">Analysis</div> -->
+        <div style="margin-top: 12px;">
+          <table>
+            <tr class="messages">
+              <td :colspan="analysis.az.value.length">Frequencies</td>
+              <td style="padding-left: 5px;">IC</td>
+            </tr>
+            <tr v-for="frequency in analysis.frequencies" class="monospace frequency">
+              <td v-for="(s) in frequency.sorted" style="min-width:11px;">
+                <div style="font-size:11px; min-height: 14px; text-align: top;">{{s[0]}}</div>
+                <div style="font-size: 9px; margin-top: -2px; color:gray">{{s[1]}}</div>
+              </td>
+              <td style="padding-left: 5px;">{{frequency.ic().toString().slice(0,6)}}</td>
+            </tr>
+            <tr class="monospace frequency" style="border-top: 1px solid darkgray;">
+              <td v-for="(s) in analysis.frequency_totals?.sorted" style="padding-top: 3px;">
+                <div style="font-size:11px; min-height: 14px; text-align: top;">{{s[0]}}</div>
+                <div style="font-size: 9px; margin-top: -1px; color:gray">{{s[1]}}</div>
+              </td>
+              <td style="padding-left: 5px;">{{analysis.frequency_totals?.ic().toString().slice(0,6)}}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </script>
+
     <!-- TODO Switch decodings -->
     <div id="app">
-      <!-- Messages -->
-      <!-- <hello :worker="ceo"></hello> -->
-      <table class="header gaps" style="margin: 15px 0px 0px 0px;">
-        <tr>
-          <td class="gap-counts" style="vertical-align: text-top;">Messages:</td>
-          <td style="vertical-align: middle;">
-            <input v-model="eyes.text_editing.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
-          </td>
-          <td>
-            <span class="monospace">edit</span>
-          </td>
-        </tr>
-      </table>
-      <div v-if="eyes.text_editing.value" style="margin-top: 5px;">
-        <textarea v-model="eyes.text" @input="eyes.on_change()" class="monospace" style="font-size: 12px; width: 90%; height: 125px;"></textarea>
-      </div>
-      <div v-else class="messages">
+
+      <vue-mzc-modal v-if="view.cipher_help.visible" title="Cipher help" @close="view.cipher_help.hide()">
+        - Ciphering expressions are evaluated in real-time and allow various JavaScript implementations to be easily tested.<br>
+        - Text is processed per newline allowing for multiple unique strings (messages) to be encrypted and analyzed.<br>
+        - Cipher implementations attempt to follow a standard formula for encryption if possible. The first parameter is the plaintext, usually "pt",
+        the second is a key appropriate for the cipher type and finally the alphabet, usually "az".<br>
+        - Advanced functionality exists for some ciphers that allow chaining to be applied to create a more sophisticated cipher.
+        Examples are provided below.<br>
+        <br>
+        The following variables are accessible to help facilitate evaluation.<br>
+        <ul style="margin:5px;">
+          <li>pt = Plaintext for the current text line</li>
+          <li>az = Alphabet defined for the current text, az83 = " ...r", az36 = "A...9", az26 = "A...Z"</li>
+        </ul>
+        <div>
+          <div v-for="cipher in view.cipher_help.context.ciphers">
+            <div style="font-weight: bold;">{{cipher.name}}</div>
+            <table style="width:90%;">
+              <tr v-for="example in cipher.examples">
+                <td><button @click="view.cipher_help.hide(() => view.cipher_help.context.test(example))" style="margin: 1px 5px 1px 1px; padding: 2px; font-size: 10px;">Test</button></td>
+                <td>{{example}}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </vue-mzc-modal>
+
+      <!-- <div v-for="analysis in view.analyses" :analysis="analysis" class="messages">
         <table>
-          <tr v-for="message in eyes.messages">
-            <td v-for="(c) in message" class="monospace" :style="{ backgroundColor: eyes.char_color(c) }">
-              <div>{{c}}</div>
-            </td>
-          </tr>
+            <tr v-for="(message, i) in analysis.messages">
+                <td v-for="(c, j) in message" class="monospace" :style="{ backgroundColor: analysis.difference_color(i, j) }">
+                    <div>{{ c }}</div>
+                </td>
+            </tr>
         </table>
+    </div> -->
+
+      <messages v-for="analysis in view.analyses" :analysis="analysis"></messages>
+
+      <div style="margin-top:15px;">
+        <div v-for="analysis in view.analyses">
+          <div :id="'counts_' + analysis.id" style="display: inline-block; height: 200px; width: 300px;"></div>
+          <div :id="'kappa_periodic_' + analysis.id" style="display: inline-block; height: 200px; width: 300px;"></div>
+          <div :id="'kappa_autocorrelation_' + analysis.id" style="display: inline-block; height: 200px; width: 300px;"></div>
+        </div>
       </div>
 
-      <!-- Analysis -->
-      <div class="header" style="margin: 15px 0px 0px 0px;">Analysis</div>
-      <div style="margin-top: 3px;">
-        <table>
-          <tr class="messages" style="font-size: 14px;">
-            <td colspan="83">Frequencies</td>
-            <td style="padding-left: 5px;">IC</td>
-          </tr>
-          <tr v-for="frequency in eyes.frequencies" class="monospace frequency">
-            <td v-for="(s) in frequency.sorted" style="min-width:10px;">
-              <div style="font-size:10px; min-height: 14px; text-align: top;">{{s[0]}}</div>
-              <div style="font-size: 8px; margin-top: -2px; color:gray">{{s[1]}}</div>
-            </td>
-            <td style="padding-left: 5px;">{{frequency.ic_mono().toString().slice(0,6)}}</td>
-          </tr>
-          <tr class="monospace frequency" style="border-top: 1px solid darkgray;">
-            <td v-for="(s) in eyes.frequency_totals.sorted" style="padding-top: 3px;">
-              <div style="font-size:10px; min-height: 14px; text-align: top;">{{s[0]}}</div>
-              <div style="font-size: 8px; margin-top: -1px; max-width:10px; color:gray">{{s[1]}}</div>
-            </td>
-            <td style="padding-left: 5px;">{{eyes.frequency_totals.ic_mono().toString().slice(0,6)}}</td>
-          </tr>
-        </table>
-      </div>
+      <frequency v-for="analysis in view.analyses" :analysis="analysis"></frequency>
 
       <!-- <div class="messages" style="font-size: 14px;">N-grams</div> -->
-
-      <!-- Alignments Header -->
-      <table class="header gaps" style="margin: 15px 0px 0px 0px;">
-        <tr>
-          <td class="gap-counts" style="vertical-align: text-top;">Alignments:</td>
-          <td style="vertical-align: middle;">
-            <input v-model="eyes.alignment_unique.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
-          </td>
-          <td>
-            <span class="monospace">unique</span>
-          </td>
-        </tr>
-      </table>
-      <!-- Alignments -->
-      <div class="messages">
-        <table>
-          <tr v-for="(message,i) in eyes.messages">
-            <td v-for="(c,j) in message" class="monospace" :style="{ backgroundColor: eyes.alignment_color(i,j) }">
-              <div>{{c}}</div>
-            </td>
-          </tr>
-        </table>
-      </div>
           
-      <!-- Gaps Header -->
-      <table class="header gaps" style="margin:15px 0px 0px 0px;">
-        <tr>
-          <td class="gap-counts" style="vertical-align: text-top;">Gaps:</td>
-          <td style="vertical-align: middle;">
-            <input v-model="eyes.gaps_aligned.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
-          </td>
-          <td>
-            <span class="monospace">aligned</span>
-          </td>
-          <td style="vertical-align: middle;">
-            <input v-model="eyes.gap_ends.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
-          </td>
-          <td>
-            <span class="monospace">ends</span>
-          </td>
-          <td class="gap-counts" style="padding-right: 3px;">
-            <button class="btn btn-toggle monospace" v-on:click="eyes.gaps_min.add(-1)">-</button>
-            <span class="">{{eyes.gaps_min.get()}}</span>
-            <button class="btn monospace" v-on:click="eyes.gaps_min.add(1)">+</button>
-          </td> 
-          <td class="gap-counts" style="padding-right: 5px;">
-            <button class="btn btn-toggle monospace" v-on:click="eyes.gaps_max.add(-1)">-</button>
-            <span class="">{{eyes.gaps_max.get()}}</span>
-            <button class="btn monospace" v-on:click="eyes.gaps_max.add(1)">+</button>
-            <button class="btn monospace" v-on:click="eyes.gaps_max.set(eyes.messages_max)">></button>
-          </td> 
-          <td v-for="gap in eyes.gap_counts" class="gap-count">
-            <span :style="{ backgroundColor: eyes.gap_color(gap[0]) }">{{gap[0]}}</span>:<span>{{gap[1]}}</span>
-          </td> 
-        </tr>
-      </table>
-      <!-- Gaps -->
-      <div class="messages">
-        <table>
-          <tr v-for="(message,i) in eyes.messages">
-            <td v-for="(c,j) in message" class="monospace" :style="{ backgroundColor: eyes.gap_color(eyes.gap_length(i,j)) }">
-              <div>{{c}}</div>
-            </td>
-          </tr>
-        </table>
-      </div>
+      <alignments v-for="analysis in view.analyses" :analysis="analysis"></alignments>
+      <gaps v-for="analysis in view.analyses" :analysis="analysis"></gaps>
+      <isomorphs v-for="analysis in view.analyses" :analysis="analysis"></isomorphs>
 
-      <!-- Isomorphs Header -->
-      <table class="header gaps" style="margin: 15px 0px 0px 0px;">
-        <tr>
-          <td class="gap-counts" style="vertical-align: text-top;">Isomorphs:</td>
-          <td>
-            <span class="monospace">length</span>
-          </td>
-          <td class="gap-counts" style="padding-right: 3px;">
-            <button class="btn btn-toggle monospace" v-on:click="eyes.isomorphs_max_length.add(-1)">-</button>
-            <span class="">{{eyes.isomorphs_max_length.get()}}</span>
-            <button class="btn monospace" v-on:click="eyes.isomorphs_max_length.add(1)">+</button>
-          </td>
-          <td>
-            <span class="monospace">pairs</span>
-          </td>
-          <td class="gap-counts" style="padding-right: 3px;">
-            <button class="btn btn-toggle monospace" v-on:click="eyes.isomorphs_min_pairs.add(-1)">-</button>
-            <span class="">{{eyes.isomorphs_min_pairs.get()}}</span>
-            <button class="btn monospace" v-on:click="eyes.isomorphs_min_pairs.add(1)">+</button>
-          </td> 
-          <td>
-            <span class="monospace">count</span>
-          </td>
-          <td class="gap-counts" style="padding-right: 3px;">
-            <button class="btn btn-toggle monospace" v-on:click="eyes.isomorphs_min_count.add(-1)">-</button>
-            <span class="">{{eyes.isomorphs_min_count.get()}}</span>
-            <button class="btn monospace" v-on:click="eyes.isomorphs_min_count.add(1)">+</button>
-          </td> 
-          <td style="vertical-align: middle; padding-left: 5px;">
-            <input v-model="eyes.isomorphs_fit_length.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
-          </td>
-          <td>
-            <span class="monospace">fit</span>
-          </td>
-        </tr>
-      </table>
-      <!-- Isomorphs -->
-      <div class="messages">
-        <table>
-          <tr v-for="(message,i) in eyes.messages">
-            <td v-for="(c,j) in message" class="monospace" :style="{ backgroundColor: eyes.isomorph_color(i,j) }">
-              <div>{{c}}</div>
-            </td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- app -->
     </div>
 
-    <script>
-      Vue.component('hello', {
-        template: '#hello-template',
+    <script type="module">
+      // https://github.com/maximzhurkin/vue-mzc-modal
+      import VueMzcModal from './vue2-modal.min.js'
+      
+      Vue.component('messages', {
+        template: '#messages-template',
         props: {
-          worker: Worker   
+          analysis: Analysis 
+        }
+      })
+      Vue.component('frequency', {
+        template: '#frequency-template',
+        props: {
+          analysis: Analysis 
         }
       })
       new Vue({
         el: '#app',
         data: {
-          eyes: eyes,
+          view: view,
+        },
+        components: {
+          VueMzcModal,
+          "alignments": httpVueLoader("./components/alignments.vue"),
+          "gaps": httpVueLoader("./components/gaps.vue"),
+          "isomorphs": httpVueLoader("./components/isomorphs.vue")
+        },
+        mounted() {
+          window.addEventListener("load", () => view.on_load())
         }
       })
     </script>
-</body>
-</body>
+  </body>
 </html>

@@ -1,18 +1,14 @@
 {
-  "name": "Hackers",
+  "name": "js-Cryptography",
   "version": "1.0.0",
-  "description": "Hackers game",
+  "description": "js-Cryptography",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
     "serve": "lite-server",
-    "start": "npm run watch & npm run serve",
-    "clean": "rm -rf dist"
+    "start": "npm run serve"
   },
   "author": "Alex Winston",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^4.4.4",
     "lite-server": "^2.6.1"
   }
 }

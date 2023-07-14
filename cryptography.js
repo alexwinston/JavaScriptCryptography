@@ -1,4 +1,5 @@
 const az26 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const az36 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const az83 = Array.from({ length:83 }, (_, i) => String.fromCharCode(i + 32)).join("")
 const az83_42 = Array.from({ length:83 }, (_, i) => String.fromCharCode(i + 42)).join("")
 const az85 = Array.from({ length:85 }, (_, i) => String.fromCharCode(i + 32)).join("")
@@ -79,7 +80,7 @@ class Shift {
     static multiplicative = (m) => Multiplicative.f(m)
 
     // Only 1,3,5,7 are valid exponents for mod(83), all others produce fewer unique values than the modulo
-    static exponetial = (e) => Exponentiation.f(e)
+    static exponential = (e) => Exponentiation.f(e)
 
     static alternate = (cipher, n = 2) => ({
         shift: (p, k, i, az) => i % n === 0 ? cipher.shift(p, k, i, az) : p,
@@ -314,12 +315,12 @@ class Exponentiation {
 }
 
 class Trithemius {
-    static encrypt(s, kt = az26, az = az26, cipher = Vigenere) {
-        return cipher.encrypt(s, kt, az)
+    static encrypt(pt, kt = az26, az = az26, cipher = Vigenere) {
+        return cipher.encrypt(pt, kt, az)
     }
 
-    static decrypt(s, kt = az26, az = az26, cipher = Vigenere) {
-        return cipher.decrypt(s, kt, az)
+    static decrypt(ct, kt = az26, az = az26, cipher = Vigenere) {
+        return cipher.decrypt(ct, kt, az)
     }
 }
 
@@ -371,14 +372,25 @@ class Numbers {
     static gcd(a, b) {
         if (a == 0)
             return b;
-        return NUmbers.gcd(b % a, a);
+        return Numbers.gcd(b % a, a);
     }
+
+    static random = (min,max) => Math.floor((crypto.getRandomValues(new Uint32Array(1))[0] / 2**32) * (max - min) + min)
 }
 
 class ABC {
     constructor(p, c) {
         this.p = p
         this.c = c
+    }
+
+    static ascii(offset, length) {
+        const ascii = []
+        for (var i = offset; i < length + offset; i++) {
+            ascii.push(String.fromCharCode(i + (i > 126 ? 34 : 0)))
+        }
+        return ascii.join("")
+        // return Array.from({ length:256 }, (_, i) => String.fromCharCode(i)).join("").shift(offset).slice(0, length)
     }
 
     // TODO rename to offset?
@@ -432,6 +444,69 @@ class ABC {
 
 }
 
+class Arrays {
+    static zip(a, b) {
+        var sum = 0
+
+        const length = Math.min(a.length, b.length)
+        for (var i = 0; i < length; i++) {
+            if (a[i] == b[i]) { sum++ }
+        }
+        return sum
+    }
+}
+
+class Kappa {
+    static test(msg1, msg2, offset) {
+        var m1 = msg1.slice(offset)
+        // console.log("m1", m1)
+        const m2 = msg2.slice(0, m1.length)
+        // console.log("m2", m2)
+        m1 = m1.slice(msg2.slice(0, m2.length + 1))
+        // console.log("m1", m1)
+        // console.log(offset)
+        return [Arrays.zip(m1, m2), m1.length]
+    }
+    
+    static periodic(strings, start = 0, end = 15) {
+        const bounds = Array.from({ length: end - start + 1 }, (_,i) => start + i)
+    
+        const results_y = []
+        for (const i of bounds) {
+            var matches = 0
+            var checks = 0
+            for (const msg1 of strings) {
+                for (const msg2 of strings) {
+                    const match_check = Kappa.test(msg1, msg2, i)
+                    matches += match_check[0]
+                    checks += match_check[1]
+                }
+            }
+            results_y.push(1000 * matches / checks)
+        }
+        // return results_y.slice(0,-1)
+        return results_y
+    }
+
+    static autocorrelation(strings, start = 0, end = 15) {
+        const bounds = Array.from({ length: end - start + 1 }, (_,i) => start + i)
+        const range = Array.from({ length: strings.length }, (_,i) => i)
+
+        const results_y = []
+        for (const i of bounds) {
+            var matches = 0
+            var checks = 0
+            for (const j of range) {
+                const match_check = Kappa.test(strings[j], strings[j], i)
+                matches += match_check[0]
+                checks += match_check[1]
+            }
+            results_y.push(1000 * matches / checks)
+        }
+        return results_y
+    }
+}
+
 class Frequencies {
     // static English = "ETAOINSHRDLCUMWFGYPBVKJXQZ"
     static English = "ETAOINSRHLDCUMFGPWYBVKJXZQ"
@@ -462,9 +537,10 @@ class Frequencies {
     }
 
     // https://en.wikipedia.org/wiki/Index_of_coincidence
+    // https://ciphereditor.com/explore/index-of-coincidence
     // Currently returning the Kp (Kappa plaintext) rather than IC
     // Monographic IC is calculated by multiplying Kp by 26 for English, ie 0.067 * 26
-    ic_mono() {
+    ic() {
         var ic = 0
         for (var a in this.f) {
             // ic += (this.f[a]/this.s.length)**2
@@ -474,7 +550,7 @@ class Frequencies {
     }
 
     // MILCRYP1 pg 41
-    ic(width = 1) {
+    ic_normalized(width = 1) {
         const freqs = []
         // Observed (delta o) across width
         const w = split(this.s, width)
@@ -619,6 +695,8 @@ class Gronsfeld {
         }
         return pt.join("")
     }
+
+    static encrypt = Gronsfeld.decrypt
 }
 
 class Variant {
@@ -814,6 +892,10 @@ String.prototype.reverse = function() {
     return this.split("").reverse().join("")
 }
 
+String.prototype.shuffle = function() {
+    return this.split("").shuffle().join("")
+}
+
 Array.prototype.rotate = function(n) {
     return [...this.slice(-n, this.length), ...this.slice(0, -n)]
 }
@@ -826,16 +908,6 @@ Array.prototype.deduplicate = function(a) {
     const deduplicated = []
     this.forEach(v => { if (a.indexOf(v) === -1) { deduplicated.push(v) } })
     return deduplicated
-}
-
-String.prototype.isomorph = function(az = az26) {
-    const a = Array.from(new Set(this))
-    const isomorph = []
-    for (var i = 0; i < this.length; i++) {
-        const c = this[i]
-        isomorph.push(az[a.indexOf(c)])
-    }
-    return { s: this, set: a, abc: isomorph.join(""), pairs: this.length - a.length }
 }
 
 const prune = function(a, m) {
@@ -852,29 +924,6 @@ const prune = function(a, m) {
         m.set(k2, indexes2.deduplicate(indexes))
     }
     prune(a.slice(1), m)
-}
-
-String.prototype.isomorphs = function(min = 5, max = 13, pairs = 2, size = 8, az = az26) {
-    const m = new Map()
-    for (var i = 0; i < this.length - min; i++) {
-        const m2 = []
-        for (var j = min; j <= max && i + j < this.length; j++) {
-            // console.log(i, j, min, max)
-            const isomorph = this.substring(i, i + j).isomorph(az)
-            // console.log("i", isomorph)
-            const abc = isomorph.abc
-            if (isomorph.pairs >= pairs && isomorph.set.length <= size
-                    && abc.substring(1).includes("A")
-                    && abc.substring(0, abc.length - 1).includes(abc[abc.length - 1])
-            ) {
-                if (!m.has(isomorph.abc)) { m.set(isomorph.abc, []) }
-                m.get(isomorph.abc).push(i)
-                m2.push(isomorph.abc)
-            }
-        }
-    }
-
-    return m
 }
 
 const factors = n => [...Array(n + 1).keys()].filter(i => n % i === 0)
@@ -917,62 +966,6 @@ String.prototype.duplicates = function(min = 3, max = 13) {
     }
 
     return m
-}
-
-Array.prototype.isomorphs = function(min = 5, max = 13, pairs = 2, size = 8, az = az26) {
-    const isomorphs = []
-    for (var i of this) {
-        isomorphs.push(i.isomorphs(min, max, pairs, size, az))
-    }
-
-    return isomorphs
-}
-
-class Isomorphs {
-    static shared(isomorphs) {
-        const keys = new Set()
-        for (var i of isomorphs) {
-            for (var k of i.keys()) {
-                keys.add(k)
-            }
-        }
-
-        const shared = new Set()
-        for (var k of [...keys]) {
-            for (var i of isomorphs) {
-                shared.add(k)
-                if (!i.has(k)) { shared.delete(k); break }
-            }
-        }
-        return shared
-    }
-
-    static index(isomorphs, strings) {
-        const indexes = new Map()
-
-        const shared = Isomorphs.shared(isomorphs)
-        // console.log("shared", shared)
-        for (const i of shared) {
-            // console.log(i)
-            indexes.set(i, [])
-            for (var j = 0; j < isomorphs.length; j++) {
-                isomorphs[j].get(i).forEach(v => indexes.get(i).push( { s:strings[j], i:v, v:strings[j].substring(v, v + i.length), k:i }))
-            }
-        }
-
-        return indexes
-    }
-
-    static prune(isomorphs, min = 1) {
-        // Remove isomorphs that only occur at a single index
-        for (const [key, value] of isomorphs) {
-            const indexes = isomorphs.get(key)
-            if (!(indexes.length > min)) {
-                isomorphs.delete(key)
-            }
-        }
-        return isomorphs
-    }
 }
 
 // https://docs.google.com/document/d/12sCi3OrTuy4PPcu3zUykue7suHvAPyK-uFKcm8Rp4Go
@@ -1031,12 +1024,73 @@ String.prototype.gaps = function(min = 1, max = 16) {
     return this.split("").gaps(min, max)
 }
 
+Array.prototype.alignments = function() {
+    const alignments = Array(this.length).fill().map((_,i) => Array(this[i].length).fill())
+    for (var i = 0; i < this.length; i++) {
+        const message1 = this[i]
+        for (var j = i + 1; j < this.length; j++) {
+            const message2 = this[j]
+            for (var k = 0; k < message1.length; k++) {
+                if (message1[k] === message2[k]) {
+                    alignments[i][k] = message1[k]
+                    alignments[j][k] = message2[k]
+                }
+            }
+        }
+    }
+    return alignments
+}
+
 String.prototype.ascii = function(shift) {
     return this.split("").map(v => String.fromCharCode(v.charCodeAt(0) + shift))
 }
 
 Array.prototype.longest = function() {
     return this.reduce((a,b) => a.length > b.length ? a : b)
+}
+
+class Isomorph {
+    constructor(isomorph, s, counts, patterns) {
+        this.isomorph = isomorph
+        this.s = s
+        this.counts = counts
+        this.patterns = patterns
+    }
+
+    pattern() {
+        return this.isomorph.map(v => v.p != undefined ? az26[v.p] : ".").join("")
+    }
+}
+
+Array.prototype.isomorphs = function(length = 2) {
+    const isomorphs = []
+    for (var i = 0; i <= this.length - length; i++) {
+        const s = this.slice(i, i + length)
+        const counts = new Map()
+        for (var j = 0; j < s.length; j++) {
+            const c = s[j]
+            if (!counts.has(c)) { counts.set(c, 0) }
+            counts.set(c, counts.get(c) + 1)
+        }
+        // console.log(s)
+        // console.log(counts)
+        const isomorph = []
+        const patterns = new Map()
+        for (var j = 0, k = 0; j < s.length; j++) {
+            const c = s[j]
+            if (counts.get(c) > 1 && !patterns.has(c)) { patterns.set(c, k++) }
+            isomorph.push({ i:i+j, c:c, p:patterns.has(c) ? patterns.get(c) : undefined })
+        }
+        if (isomorph[0].p != undefined && isomorph[length - 1].p != undefined) {
+            isomorphs.push(new Isomorph(isomorph, s, counts, patterns))
+        }
+    }
+
+    return isomorphs
+}
+
+String.prototype.isomorphs = function(length = 2) {
+    return this.split("").isomorphs(length)
 }
 
 class Chi {
@@ -1153,4 +1207,28 @@ String.prototype.ic = function(min, max, az = az26) {
         ic_avg.push({ length:i, avg: ic.avg() })
     }
     return ic_avg
+}
+
+Array.prototype.difference = function() {
+    const differences = []
+    if (this.length === 1) { return this }
+    for (var i = 1; i < this.length; i++) {
+        differences.push(Math.abs(this[i] - this[i - 1]))
+        // differences.push(this[i] - this[i - 1])
+        // differences.push(this[i-1] <= this[i] ? this[i] - this[i-1] : 83 - this[i-1] + this[i])
+    }
+    // console.log(differences)
+    return differences
+}
+
+String.prototype.difference = function() {
+    return this.split("").map(v => v.charCodeAt(0)).difference()
+}
+
+Array.prototype.differences = function() {
+    return this.slice(2).reduce((p,c,i,a) => p.difference(), this.difference())[0]
+}
+
+String.prototype.differences = function() {
+    return this.split("").map(v => v.charCodeAt(0)).differences()
 }
