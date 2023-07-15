@@ -169,6 +169,7 @@ class Vigenere {
 // }
 
 // https://macs4200.org/chapters/07/4/autokey-cipher.html
+// https://www.cryptool.org/en/cto/autokey
 class Autokey {
     static encrypt(pt, k, az = az26, cipher = Vigenere) {
         const ks = k + pt

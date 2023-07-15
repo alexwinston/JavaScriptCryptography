@@ -223,6 +223,16 @@
     <!-- TODO Switch decodings -->
     <div id="app">
 
+      <div>
+        <h2 style="margin: 0; padding: 5px 0px 5px 0px;">Noita glyphs analyzer</h2>
+        <div style="font-size: 12px;">
+          This tool allows for the comparison of the accepted eye glyph encodings in the first "Text" area against encipherable plaintext in the second "Text" area.<br>
+          The plaintext can be edited by clicking the "edit" button in the second "Text" area.
+          The comparison "Text" area is sticky and will allow it to be seen and updated as the page scrolls.<br>
+          All computed values are updated in realtime as the text, alphabet, or cipher is changed. Additionally the first "Text" area can be "Randomized" for comparisons against random data.<br>
+          Each area of analysis provides the glyph data first and then the comparison data
+        </div>
+      </div>
       <vue-mzc-modal v-if="view.cipher_help.visible" title="Cipher help" @close="view.cipher_help.hide()">
         - Ciphering expressions are evaluated in real-time and allow various JavaScript implementations to be easily tested.<br>
         - Text is processed per newline allowing for multiple unique strings (messages) to be encrypted and analyzed.<br>
