@@ -240,6 +240,215 @@ class Cipherkey {
     }
 }
 
+class Hill {
+    static eyes = [
+        [27, 13, 67],
+        [0, 47, 79],
+        [0, 31, 7]
+    ]
+
+    constructor(key, az) {
+        this.alphbetics = az;
+        this.n = this.alphbetics.length
+        // this.key = [
+        //     [this.alphbetics.indexOf("R"), this.alphbetics.indexOf("l"), this.alphbetics.indexOf(";")],
+        //     [this.alphbetics.indexOf("p"), this.alphbetics.indexOf("_"), this.alphbetics.indexOf("m")],
+        //     [this.alphbetics.indexOf("D"), this.alphbetics.indexOf("B"), this.alphbetics.indexOf("A")]
+        // ]
+        this.key = key
+        this.det = parseInt(this.getDeterminent(this.key))
+    }
+
+    getDeterminent(matrix) {
+        let x = matrix[0][0] * ((matrix[1][1] * matrix[2][2]) - (matrix[2][1] * matrix[1][2]));
+        let y = matrix[0][1] * ((matrix[1][0] * matrix[2][2]) - (matrix[2][0] * matrix[1][2]));
+        let z = matrix[0][2] * ((matrix[1][0] * matrix[2][1]) - (matrix[2][0] * matrix[1][1]));
+        return (x - y + z);
+    }
+
+    modularInverse(m, n) {
+        let x = m;
+        let y = n;
+
+        let divs = [];
+        let adds = [];
+
+        let result;
+
+        if (y > x) {
+            let i = 1;
+            while (x != 0) {
+                divs[i] = Math.floor(y / x);
+                let temp = x;
+                x = y % x;
+                y = temp;
+                i++;
+            }
+
+            let len = divs.length;
+            adds[len - 1] = 0;
+            adds[len - 2] = 1;
+            for (let index = len - 2; index > 0; index--) {
+                adds[index - 1] = (divs[index] * adds[index]) + adds[index + 1];
+            }
+
+            if ((adds[0] * m) > (adds[1] * n)) {
+                result = adds[0];
+            } else {
+                result = n - adds[0];
+            }
+
+        }
+        return result;
+    }
+
+    inverseMatrix(matrix) {
+        let minorMatrix = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
+        for (let i = 0; i < matrix.length; i++) {
+            for (let j = 0; j < matrix[i].length; j++) {
+                minorMatrix[i][j] = (matrix[(i + 1) % 3][(j + 1) % 3] * matrix[(i + 2) % 3][(j + 2) % 3]) - (matrix[(i + 1) % 3][(j + 2) % 3] * matrix[(i + 2) % 3][(j + 1) % 3]);
+            }
+        }
+
+        let adjointMatrix = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
+        for (let i = 0; i < minorMatrix.length; i++) {
+            for (let j = 0; j < minorMatrix[i].length; j++) {
+                adjointMatrix[j][i] = minorMatrix[i][j];
+            }
+        }
+        return adjointMatrix;
+    }
+
+    multiplyMatrix(a, b) {
+        let result = [];
+        for (let i = 0; i < a.length; i++) {
+            result[i] = 0;
+            for (let j = 0; j < a[i].length; j++) {
+                result[i] += b[j] * a[i][j];
+            }
+        }
+        return result;
+    }
+
+    gcd(x, y) {
+        x = Math.abs(x);
+        y = Math.abs(y);
+        while (y) {
+            var t = y;
+            y = x % y;
+            x = t;
+        }
+        return x;
+    }
+
+    getRidOfNeg(x, n) {
+        while (x < 0) {
+            x += n;
+        }
+        return x;
+    }
+
+    checkRelativelyPrime() {
+        det = parseInt(getDeterminent(key));
+        console.log("det = " + det);
+
+        let g = gcd(det, n);
+        console.log("gcd = " + g);
+
+        if (g == 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    static encrypt(pt, k, az) {
+        const hill = new Hill(k, az)
+        let cipher = "";
+        if (hill.alphbetics.indexOf(" ") == -1) {
+            plain = plain.split(" ").join("");
+        }
+
+        for (let index = 0; index < pt.length; index += 3) {
+            let x = hill.alphbetics.indexOf(pt[index]);
+            let y, z;
+
+            if (index + 1 == pt.length) {
+                y = 0;
+                z = 1;
+            } else {
+                y = hill.alphbetics.indexOf(pt[index + 1]);
+                if (index + 2 == pt.length) {
+                    z = 0;
+                } else {
+                    z = hill.alphbetics.indexOf(pt[index + 2]);
+                }
+            }
+
+            let res = hill.multiplyMatrix(hill.key, [x, y, z]);
+
+            for (let i = 0; i < res.length; i++) {
+                if (res[i] < 0) {
+                    res[i] = this.getRidOfNeg(res[i], this.n);
+                }
+                let j = res[i] % hill.n;
+                cipher += hill.alphbetics[j];
+            }
+        }
+        return cipher;
+    }
+
+    static decrypt(cipher, k, az) {
+        const hill = new Hill(k, az)
+        let plain = "";
+
+        let m = hill.det;
+        if (hill.det < 0) {
+            m = this.getRidOfNeg(this.det, this.n);
+        }
+        m = m % hill.n;
+
+        console.log("n: " + hill.n);
+        console.log("m:  " + m);
+
+        let modularInv = hill.modularInverse(m, hill.n);
+        let matrixInv = hill.inverseMatrix(hill.key);
+        console.log(modularInv);
+
+
+        for (let index = 0; index < cipher.length; index += 3) {
+            let x = this.alphbetics.indexOf(cipher[index]);
+            let y = this.alphbetics.indexOf(cipher[index + 1]);
+            let z = this.alphbetics.indexOf(cipher[index + 2]);
+            console.log("dec: " + [x, y, z]);
+
+            let res = this.multiplyMatrix(matrixInv, [x, y, z]);
+            console.log("matinv: " + res);
+
+            for (let i = 0; i < res.length; i++) {
+                res[i] *= modularInv;
+                console.log("res[" + i + "]:  " + res[i]);
+
+                if (res[i] < 0) {
+                    res[i] = this.getRidOfNeg(res[i], this.n);
+                }
+                let j = res[i] % this.n;
+
+                plain += this.alphbetics[j];
+            }
+        }
+        return plain;
+    }
+}
+
 class Beaufort {
     static cipher(pt, kt, az = az26) {
         // console.log("cipher", pt, kt, az)
@@ -303,13 +512,13 @@ class Exponentiation {
         }
     }
 
-    static encrypt(pt, kt, k, az = az26) {
-        return Shift.encrypt(pt, kt, az, [Exponentiation.f(k)])
+    static encrypt(pt, k, az = az26) {
+        return Shift.encrypt(pt, "", az, [Exponentiation.f(k)])
         // return Shift.encrypt(Vigenere.encrypt(pt, kt, az), kt, az, Exponentiation.f(k))
     }
 
-    static decrypt(ct, kt, k, az = az26) {
-        return Shift.decrypt(ct, kt, az, [Exponentiation.f(k)])
+    static decrypt(ct, k, az = az26) {
+        return Shift.decrypt(ct, "", az, [Exponentiation.f(k)])
         // return Vigenere.decrypt(Shift.decrypt(ct, kt, az, Exponentiation.f(k)), kt, az)
     }
 }

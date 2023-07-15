@@ -75,219 +75,13 @@ class Chao {
         }).join('')
     }
 
-    encrypt(pt) {
-        return this.process(pt, 0)
+    static encrypt(pt, ct_az, pt_az) {
+      return new Chao(ct_az, pt_az).process(pt, 0)
     }
 
-    decrypt(ct) {
-        return this.process(ct, 1)
+    static decrypt(ct, ct_az, pt_az) {
+        return new Chao(ct, ct_az, pt_az).process(ct, 1)
     }
-}
-
-class Hill {
-  static eyes = [
-    [27, 13, 67],
-    [0, 47, 79],
-    [0, 31, 7]
-  ]
-
-  constructor(key, az) {
-    this.alphbetics = az;
-    this.n = this.alphbetics.length
-    // this.key = [
-    //     [this.alphbetics.indexOf("R"), this.alphbetics.indexOf("l"), this.alphbetics.indexOf(";")],
-    //     [this.alphbetics.indexOf("p"), this.alphbetics.indexOf("_"), this.alphbetics.indexOf("m")],
-    //     [this.alphbetics.indexOf("D"), this.alphbetics.indexOf("B"), this.alphbetics.indexOf("A")]
-    // ]
-    this.key = key
-    this.det = parseInt(this.getDeterminent(this.key))
-  }
-
-  getDeterminent(matrix) {
-    let x = matrix[0][0] * ((matrix[1][1] * matrix[2][2]) - (matrix[2][1] * matrix[1][2]));
-    let y = matrix[0][1] * ((matrix[1][0] * matrix[2][2]) - (matrix[2][0] * matrix[1][2]));
-    let z = matrix[0][2] * ((matrix[1][0] * matrix[2][1]) - (matrix[2][0] * matrix[1][1]));
-    return (x - y + z);
-  }
-
-  modularInverse(m, n) {
-    let x = m;
-    let y = n;
-
-    let divs = [];
-    let adds = [];
-
-    let result;
-
-    if (y > x) {
-      let i = 1;
-      while (x != 0) {
-        divs[i] = Math.floor(y / x);
-        let temp = x;
-        x = y % x;
-        y = temp;
-        i++;
-      }
-
-      let len = divs.length;
-      adds[len - 1] = 0;
-      adds[len - 2] = 1;
-      for (let index = len - 2; index > 0; index--) {
-        adds[index - 1] = (divs[index] * adds[index]) + adds[index + 1];
-      }
-
-      if ((adds[0] * m) > (adds[1] * n)) {
-        result = adds[0];
-      } else {
-        result = n - adds[0];
-      }
-
-    }
-    return result;
-  }
-
-  inverseMatrix(matrix) {
-    let minorMatrix = [
-      [0, 0, 0],
-      [0, 0, 0],
-      [0, 0, 0]
-    ];
-    for (let i = 0; i < matrix.length; i++) {
-      for (let j = 0; j < matrix[i].length; j++) {
-        minorMatrix[i][j] = (matrix[(i + 1) % 3][(j + 1) % 3] * matrix[(i + 2) % 3][(j + 2) % 3]) - (matrix[(i + 1) % 3][(j + 2) % 3] * matrix[(i + 2) % 3][(j + 1) % 3]);
-      }
-    }
-
-    let adjointMatrix = [
-      [0, 0, 0],
-      [0, 0, 0],
-      [0, 0, 0]
-    ];
-    for (let i = 0; i < minorMatrix.length; i++) {
-      for (let j = 0; j < minorMatrix[i].length; j++) {
-        adjointMatrix[j][i] = minorMatrix[i][j];
-      }
-    }
-    return adjointMatrix;
-  }
-
-  multiplyMatrix(a, b) {
-    let result = [];
-    for (let i = 0; i < a.length; i++) {
-      result[i] = 0;
-      for (let j = 0; j < a[i].length; j++) {
-        result[i] += b[j] * a[i][j];
-      }
-    }
-    return result;
-  }
-
-  gcd(x, y) {
-    x = Math.abs(x);
-    y = Math.abs(y);
-    while (y) {
-      var t = y;
-      y = x % y;
-      x = t;
-    }
-    return x;
-  }
-
-  getRidOfNeg(x, n) {
-    while (x < 0) {
-      x += n;
-    }
-    return x;
-  }
-
-  checkRelativelyPrime() {
-    det = parseInt(getDeterminent(key));
-    console.log("det = " + det);
-
-    let g = gcd(det, n);
-    console.log("gcd = " + g);
-
-    if (g == 1) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  encrypt(plain) {
-    let cipher = "";
-    if (this.alphbetics.indexOf(" ") == -1) {
-      plain = plain.split(" ").join("");
-    }
-
-    for (let index = 0; index < plain.length; index += 3) {
-      let x = this.alphbetics.indexOf(plain[index]);
-      let y, z;
-
-      if (index + 1 == plain.length) {
-        y = 0;
-        z = 1;
-      } else {
-        y = this.alphbetics.indexOf(plain[index + 1]);
-        if (index + 2 == plain.length) {
-          z = 0;
-        } else {
-          z = this.alphbetics.indexOf(plain[index + 2]);
-        }
-      }
-
-      let res = this.multiplyMatrix(this.key, [x, y, z]);
-
-      for (let i = 0; i < res.length; i++) {
-        if (res[i] < 0) {
-          res[i] = this.getRidOfNeg(res[i], this.n);
-        }
-        let j = res[i] % this.n;
-        cipher += this.alphbetics[j];
-      }
-    }
-    return cipher;
-  }
-
-  decrypt(cipher) {
-    let plain = "";
-    let m = this.det;
-    if (this.det < 0) {
-      m = this.getRidOfNeg(this.det, this.n);
-    }
-    m = m % this.n;
-
-    console.log("n: " + this.n);
-    console.log("m:  " + m);
-
-    let modularInv = this.modularInverse(m, this.n);
-    let matrixInv = this.inverseMatrix(this.key);
-    console.log(modularInv);
-
-
-    for (let index = 0; index < cipher.length; index += 3) {
-      let x = this.alphbetics.indexOf(cipher[index]);
-      let y = this.alphbetics.indexOf(cipher[index + 1]);
-      let z = this.alphbetics.indexOf(cipher[index + 2]);
-      console.log("dec: " + [x, y, z]);
-
-      let res = this.multiplyMatrix(matrixInv, [x, y, z]);
-      console.log("matinv: " + res);
-
-      for (let i = 0; i < res.length; i++) {
-        res[i] *= modularInv;
-        console.log("res[" + i + "]:  " + res[i]);
-
-        if (res[i] < 0) {
-          res[i] = this.getRidOfNeg(res[i], this.n);
-        }
-        let j = res[i] % this.n;
-
-        plain += this.alphbetics[j];
-      }
-    }
-    return plain;
-  }
 }
 
 class Observable {
@@ -384,13 +178,20 @@ class Analysis {
             'Gronsfeld.encrypt(pt, Array.from({ length: pt.length }, (_,i) => (i + 1)**3), az)',
           ]},
           { name: "Hill", examples: [
-            'new Hill([[23,33,73],[0,31,7],[0,54,15]], az).encrypt(pt)',
+            'Hill.encrypt(pt, [[23,33,73],[0,31,7],[0,54,15]], az)',
           ]},
           { name: "Chao", examples: [
-            'new Chao(az, az).encrypt(pt)',
+            'Chao.encrypt(pt, az, az)',
+          ]},
+          { name: "Progressive", examples: [
+            'Progressive.encrypt(pt, 0, 27, 1, 47, az)'
           ]},
           { name: "Homophonic", examples: [
             'Homophonic.encrypt(pt, [7,1,2,3,11,2,2,4,5,0,0,3,2,6,7,2,0,6,5,9,2,1,1,0,2,0], az)'
+          ]},
+          { name: "Composite", examples: [
+            'Vigenere.encrypt(Progressive.encrypt(pt, 0, 27, 1, 47, az), "SECRET", az)',
+            'Multiplicative.encrypt(Cipherkey.encrypt(pt, "i!i", az), 33, az)'
           ]}
         ]
         this.cipher = new Observable(this.ciphers[2].examples[3], this)
@@ -755,4 +556,30 @@ console.log(az83_42)
 {
   const k = [7,1,2,3,11,2,2,4,5,0,0,3,2,6,7,2,0,6,5,9,2,1,1,0,2,0]
   const ct = Homophonic.encrypt(pt[8], k, az83)
+}
+
+// https://sites.google.com/site/cryptocrackprogram/user-guide/cipher-types/substitution/progressive-key
+class Progressive {
+  static encrypt(pt, start, initial, every, shift, az) {
+    if (every == 0) { every = 1 }
+
+    const ct = pt.slice(0, start).split("")
+    var az_shift = az.shift(initial)
+    for (var i = start; i < pt.length; i+=every) {
+      for (var j = 0; j < every; j++) {
+        const c = pt[i+j]
+        ct.push(az_shift[az.indexOf(c)])
+      }
+      az_shift = az_shift.shift(shift)
+    }
+    return ct.join("")
+  }
+}
+
+{
+  const pt = Vigenere.encrypt("HISTORYWILLBEKINDTOMEFORIINTENDTOWRITEIT", "POLITICS", az26)
+  console.log(pt)
+  // const ct = Progressive.encrypt("WWDBHZAOXZWJXSKFSHZUXNQJXWYBXVFLDKCQMMKL", 0, 0, 8, 3, az26)
+  const ct = Progressive.encrypt("HISTORYWILLBEKINDTOMEFORIINTENDTOWRITEIT", 0, 33, 1, 33, az83)
+  console.log(ct)
 }
