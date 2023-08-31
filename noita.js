@@ -29,8 +29,11 @@ function parse(e1, e2, p = [0,1,2,3,4]) {
     let eyes = []
     for (var i = 0; i < e1.length; i+=3) {
         // 83
+        // const p2 = [0,3,4,1,2]
         const g1 = eye(e1.charAt(i + 0), p) + eye(e2.charAt(i + 0), p) + eye(e1.charAt(i + 1), p)
+        // const g1 = eye(e1.charAt(i + 0), p2) + eye(e2.charAt(i + 0), p2) + eye(e1.charAt(i + 1), p2)
         const g2 = eye(e2.charAt(i + 1), p) + eye(e1.charAt(i + 2), p) + eye(e2.charAt(i + 2), p)
+        // const g2 = eye(e2.charAt(i + 2), p2) + eye(e1.charAt(i + 2), p2) + eye(e2.charAt(i + 1), p2)
 
         // const g1 = eye(e1.charAt(i + 0)) + eye(e2.charAt(i + 0)) + eye(e1.charAt(i + 1))
         // const g2 = eye(e2.charAt(i + 0)) + eye(e1.charAt(i + 1)) + eye(e2.charAt(i + 1))
@@ -52,6 +55,7 @@ function parse(e1, e2, p = [0,1,2,3,4]) {
         eyes.push(j1 + j2 + j3)
     }
 
+    // console.log(eyes)
     return eyes
 }
 
@@ -82,7 +86,7 @@ function rotate(encodings) {
             rotations.push([i,j])
         }
     }
-    console.log("rotations", rotations)
+    // console.log("rotations", rotations)
 
     const ordered = []
     for (var r = 0; r < rotations.length; r++) {
@@ -179,7 +183,7 @@ function decode(pattern = 10, positions = [0,1,2,3,4], alphabet = abc83, debug =
         }
     }
     
-    console.log("stats", stats)
+    // console.log("stats", stats)
     for (var i = 0; i < stats.length; i++) {
         const s = new Set()
         for (var j = 0; j < stats[i].length; j++) {
@@ -191,15 +195,17 @@ function decode(pattern = 10, positions = [0,1,2,3,4], alphabet = abc83, debug =
         const unused = (max - min + 1) - s2.length
         // console.log(i)
         const total = max - min + 1
-        console.log(i, s2.length, min, max, total, unused)
+        if (unused == 0) {
+            console.error(i, s2.length, min, max, total, unused, positions)
+        }
         const o = [...s].map(v => v.charCodeAt(0)).sort((a, b) =>  a - b)
-        console.log("o", o)
+        // console.log("o", o)
         const o1 = []
         for (var j = 0; j < o.length; j++) {
             const d = o[j+1] - o[j]
             if (d > 1) { o1.push([o[j],d]); }
         }
-        console.log(o1)
+        // console.log(o1)
     }
 
     const decoded = []
@@ -270,15 +276,15 @@ function decode(pattern = 10, positions = [0,1,2,3,4], alphabet = abc83, debug =
 // pt.push("I. THEN GO PRAYING NOWTHOSEWRITERS ARE MORECANALSOSPURACHALLENGEINTHEOTHERTYPES;OFPROJECTSBEINGDONE!JAZZY$MASTERA WALLS")
 
 const pt = [
-    "ATHISISASIMULATIONOFWHATALLOFTHISWONTBECOMEWHENYOUTESTWEIRDWAYSTOWRITETHESEEYEMESSAGESLIKEREALONESE",
-    "BTHISISASIMULATIONOFWHATABOVETHISCANTBECOMEWHENYOUDONTTRYHARDTOMAKEMORECOMPLICATEDEYEMESSAGESTOMATCHITY",
-    "CTHISISASIMULATIONOFWHATANOTHEROFTHESEWILLBECOMEWHENYOUCONTINUETOCREATEMOREBIZZAREANDWEIRDEYEMESSAGESTHATARENTLONGESTE",
-    "DTHEREWILLMANIFESTASOLUTIONTOTHISEYEPUZZLETHATWILLFREETHEENTIRENOITACOMMUNITYFROMTHISNIGHTMAREWEAREINI",
-    "ETHERECANTNOTBEWHATISNTNOTSEENWITHANOTHERRANDONPHRASETHROWNINTOFILLSPACEWHILEMAKINGUPNONSENSETHATFILLSTHISEXTREMELYLONGLINEOFNYANSENSEEYE",
-    "FTHEREMUSTEXISTTWOLIGHTSATTHEENTRANCEOFTHEWORKORELSEYOURWORLDISTAINTEDWITHFALSEKNOWLEDGETHATRUINSEVERYTHINGISURELYGUESS",
-    "GTHERECANTBEANYTHINGOUTOFWORLDESSENCEDWITHLARGEAMMOUNTSOFHATEORELSETHECAULDRONWILLREJECTYOUANDYOURLITTLEDOGTOOLOLJOKESE",
-    "HTHERECANTBEANYTHINGCHANGEDBYMATTEROFEATINGLOTSOFFUNGUSORELSETHECAULDRONWILLREJECTYOUANDTHEDEVELOPERSDOGWILLBESADHAHALOL",
-    "ITHERECANTBEANYTHINGINTHEWORKDESTROYEDWITTLEDORSADDLEDWITHROTTHATYOUCAUSEDORELSETHECAULDRONWILLREJECTYOUANDIDKHAHA"
+    "ATHISISASIMULATIONOFWHATALLOFTHISWONTBECOMEWHENYOUTESKBRIRDJAYATOWRINITHERECKAMISAAGOSEIKSRUARUTESY",
+    "BTHISISASIMULATIONOFWHATABIVSTHISPUCSBECOMEWHENYOUWORAPRFBARNDIRUKAMOLECOMPLICATEDEYLMESSAGOSDOMYSCHILY",
+    "CTHISISASIMULATIONOFWHATANPJHNROFTHYBEKABLWICANEWUEFPOOCYITORUENICUATEMOREBIZZORKAEDWEIRDEYEMETSAGOSAHATORTNNOLNGESTYE",
+    "DTHEREWILLMANISASTASOLOGIONTOFBDXEYEPUZZLETHATWILTFRYETHEAWJIRUMYITOCONMUNITYFRUMUHISNOGHTMAQPWEONTONI",
+    "ETHERECENTNOTBEDRATIOTRNOTSEVUWCTHAFOTWGRRANDOKPHRASNMHLOWNIFTODELLSPACEWHANEMIVINGUPKINGUTSOTHATFILLSBLESEXTREMELYLONGLINEOFNYANSENSEEYE",
+    "FTHEREMUTKEXISSDWOLAGPESYWTHETNQREPWEOFEHXWORKORELSDAIUFWORLDISDARNTCDMITSFANSEKNOWLADGETHATRUINSEVEROTHINGISURELYGUASSFORMS",
+    "GTHERECENTBEANYTHINGOUTOAWORLDESCANCALWITLLANGEAMMOUNTSIFFITSORYLSEBHSBHILDRONWOLLREAACTYIURNMTOURBIGTLEDOGTOWLITJOKERE",
+    "HTHERECENTBEANYTHINGOROLAEDBYMAIMKROFAATINGLOVSOFFUNGUMORELSETHYCAWLDRONDIEKREJECTPOURNATREDEVELIPSRSDIGWILLBESADHAHILOG",
+    "ITHERECENTBEANYTHINGONOHEWORKDESURTCIDWITTLEFIRSADDLODWOTHLATANACOUCAUSSDNOELPULHYCALLDYONWILLRIJOLTYOUALDUDEKEAHA",
 ]
 
 // const pt = []

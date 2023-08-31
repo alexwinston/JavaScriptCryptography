@@ -8,12 +8,6 @@ const az125 = Array.from({ length:125 }, (_, i) => String.fromCharCode(i)).join(
 // const factorial = n =>  n - 1n > 0 ? n * factorial(n - 1n) : n;
 const factorial = n => !n ? 1n : n * factorial(--n);
 
-const chunk = (a, n) =>
-    Array.from(
-        new Array(Math.ceil(a.length / n)),
-        (_, i) => a.slice(i * n, i * n + n)
-    );
-
 function base(digits, srcb, destb){
     let val = 0n
     srcb = BigInt(srcb)
@@ -666,13 +660,14 @@ class Arrays {
     }
 }
 
+// https://colab.research.google.com/drive/15QSZypHqLNcu7SjPKEH9aBwWWZWcbc7i
 class Kappa {
     static test(msg1, msg2, offset) {
         var m1 = msg1.slice(offset)
         // console.log("m1", m1)
         const m2 = msg2.slice(0, m1.length)
         // console.log("m2", m2)
-        m1 = m1.slice(msg2.slice(0, m2.length + 1))
+        m1 = m1.slice(0, msg2.length)
         // console.log("m1", m1)
         // console.log(offset)
         return [Arrays.zip(m1, m2), m1.length]
@@ -696,6 +691,20 @@ class Kappa {
         }
         // return results_y.slice(0,-1)
         return results_y
+    }
+
+    static positional(strings, start = 0) {
+        var matches = 0
+        var checks = 0
+        for (var i = 0; i < strings.length - 1; i++) {
+            for (var j = i + 1; j < strings.length; j++) {
+                const match_check = Kappa.test(strings[i].slice(start), strings[j].slice(start), 0)
+                // console.log(i,j)
+                matches += match_check[0]
+                checks += match_check[1]
+            }
+        }
+        return { matches: matches, checks: checks, coincidence: Math.floor(matches * 1000 / checks) }
     }
 
     static autocorrelation(strings, start = 0, end = 15) {
@@ -895,9 +904,16 @@ Number.prototype.mod = function (n) {
 }
 
 class Gronsfeld {
+    static encrypt(ct, k, az = az26) {
+        const pt = []
+        for (var i = 0; i < ct.length; i++) {
+            const az_i = az.indexOf(ct[i])
+            pt.push(az_i === -1 ? ct[i] : az[(az_i + k[i]).mod(az.length)])
+        }
+        return pt.join("")
+    }
+
     static decrypt(ct, k, az = az26) {
-        // console.log(pt)
-        // console.log(k)
         const pt = []
         for (var i = 0; i < ct.length; i++) {
             const az_i = az.indexOf(ct[i])
@@ -905,8 +921,6 @@ class Gronsfeld {
         }
         return pt.join("")
     }
-
-    static encrypt = Gronsfeld.decrypt
 }
 
 class Variant {
@@ -919,159 +933,209 @@ class Variant {
     }
 }
 
-class Trifid {
-    // https://en.wikipedia.org/wiki/Trifid_cipher
-    constructor(key = 3, az = az26 + " ") {
-        this.key = key
-        const offset = { 3: 65, 4: 32, 5: 0}
-        const length = this.key**this.key
-        // const tabula = Array.from({ length }, (_, i) => i + offset[this.key])
-        const tabula = az.split("").map(v => v.charCodeAt(0))
-        console.log("tabula", tabula)
-        this.z = Array(this.key).fill().map(e => Array(this.key).fill().map(e => Array(this.key).fill("").map(e => e)));
+// https://sites.google.com/site/cryptocrackprogram/user-guide/cipher-types/substitution/progressive-key
+class Progressive {
+    static encrypt(pt, start, initial, every, shift, az) {
+        if (every == 0) { every = 1 }
 
-        let c = 0
-        for (var i = 0; i < this.key; i++) {
-            for (var j = 0; j < this.key; j++) {
-                for (let k = 0; k < this.key; k++) {
-                    const char = String.fromCharCode(tabula[c++])
-                    // console.log(i,j,k,char)
-                    this.z[i][j][k] = char
-                }
+        const ct = pt.slice(0, start).split("")
+        var az_shift = az.shift(initial)
+        for (var i = start; i < pt.length; i += every) {
+            for (var j = 0; j < every; j++) {
+                const c = pt[i + j]
+                ct.push(az_shift[az.indexOf(c)])
             }
+            az_shift = az_shift.shift(shift)
         }
-        console.log([this.z])
-    }
-
-    scan(c, reverse = false) {
-        const key = this.key
-        for (var i = 0; i < key; i++) {
-            for (var j = 0; j < key; j++) {
-                for (let k = 0; k < key; k++) {
-                    if (this.z[i][j][k] === c) {
-                        const s = i.toString() + j.toString() + k.toString()
-                        // console.log(c, i, j, k, s)
-                        return reverse ? s.split("").reverse().join("") : s
-                    }
-                }
-            }
-        }
-        console.log("undefined", c)
-        return undefined
-    }
-
-    encipher(s, size) {
-        let encipher = []
-        Array.from(s).forEach(c => { encipher.push(this.scan(c)) })
-        console.log("encipher", encipher)
-
-        const groupings = Math.floor(s.length / size)
-        console.log("groupings", groupings)
-        const remainder = s.length % (groupings * size)
-        // console.log(groupings, remainder)
-        let groups = Array.from(Array(3), _ => Array())
-        for (var i = 0; i < encipher.length; i++) {
-            groups[0].push(encipher[i].charAt(0))
-            groups[1].push(encipher[i].charAt(1))
-            groups[2].push(encipher[i].charAt(2))
-        }
-        console.log("groups", groups)
-
-        let grouped = Array.from(Array(groupings), _ => Array.from(Array(3), _ => ""))
-        for (var i = 0; i < groupings; i++) {
-            groups[i]
-            for (var j = 0; j < size; j++) {
-                grouped[i][0] += groups[0][(i * size) + j]
-                grouped[i][1] += groups[1][(i * size) + j]
-                grouped[i][2] += groups[2][(i * size) + j]
-            }
-        }
-        console.log("grouped", grouped)
-
-        let remainders = Array.from(Array(3), _ => "")
-        for (var j = groupings * size; j < s.length; j++) {
-            remainders[0] += groups[0][j]
-            remainders[1] += groups[1][j]
-            remainders[2] += groups[2][j]
-        }
-        // console.log(remainders)
-
-        return [size, grouped, remainder, remainders]
-    }
-
-    encrypt(cipher) {
-        console.log("cipher", cipher)
-
-        const size = cipher[0]
-        const grouped = cipher[1]
-        const remain = cipher[2]
-        const remainders = cipher[3]
-
-        let ct = ""
-        for (var i = 0; i < grouped.length; i++) {
-            const group = grouped[i].join("")
-            // console.log(group)
-            for (var j = 0; j < size; j++) {
-                const a = parseInt(group.charAt((j * 3) + 0))
-                const b = parseInt(group.charAt((j * 3) + 1))
-                const c = parseInt(group.charAt((j * 3) + 2))
-                // console.log(a, b, c)
-                ct += this.z[a][b][c]
-            }
-        }
-
-        const remainder = remainders.join("")
-        console.log("remainder", remainder)
-        for (var i = 0; i < remain; i++) {
-            const a = parseInt(remainder.charAt((i * 3) + 0))
-            const b = parseInt(remainder.charAt((i * 3) + 1))
-            const c = parseInt(remainder.charAt((i * 3) + 2))
-            // console.log(a, b, c)
-            ct += this.z[a][b][c]
-        }
-
-        return ct
-    }
-
-    decrypt(s, size, reverse = false) {
-        const groupings = Math.floor(s.length / size)
-        const remainder = s.length % (groupings * size)
-        console.log("decrypt", groupings, remainder)
-
-        let groups = ""
-        for (var i = 0; i < s.length; i++) {
-            groups += this.scan(s.charAt(i), false)
-        }
-        const grouped = groups.match(new RegExp('.{1,' + (3 * size) + '}', 'g'));
-        console.log("grouped", grouped)
-
-        let decrypted = ""
-        for (var i = 0; i < groupings; i++) {
-            const group = grouped[i].match(new RegExp('.{1,' + (size) + '}', 'g'))
-            for (var j = 0; j < size; j++) {
-                // NOTE Reversed index
-                const a = group[reverse ? 2 : 0].charAt(j)
-                const b = group[1].charAt(j)
-                const c = group[reverse ? 0 : 2].charAt(j)
-                decrypted += this.z[a][b][c]
-            }
-        }
-
-        if (remainder) {
-            const group = grouped[i].match(new RegExp('.{1,' + (remainder) + '}', 'g'))
-            for (var i = 0; i < remainder; i++) {
-                // NOTE Reversed index
-                const a = group[reverse ? 2 : 0].charAt(i)
-                const b = group[1].charAt(i)
-                const c = group[reverse ? 0 : 2].charAt(i)
-                decrypted += this.z[a][b][c]
-            }
-        }
-
-        console.log("decrypted", decrypted)
-        return decrypted
+        return ct.join("")
     }
 }
+
+// Shifts az by offset each char
+class A83Z {
+    static encrypt(pt, e, offset, az = az26) {
+      const a83z = []
+      for (var i = 0; i < pt.length; i++) {
+        // const shift = (i * 36) % az.length
+        const shift = ((i**e) * offset) % az.length
+        const az_shift = az.shift(shift).slice(0,26)
+        // console.log(shift, az_shift)
+        const az_i = az26.indexOf(pt[i])
+        a83z.push(az_shift[az_i])
+      }
+      return a83z.join("")
+    }
+}
+
+class Trifid {
+    static encrypt(pt, size, group_size, az) {
+        console.log(az)
+        const keys = new Map()
+        const values = new Map()
+        for (var i = 0; i < size ** 3; i++) {
+            keys.set(i, i.toString(size).padStart(3, "0"))
+            values.set(i.toString(size).padStart(3, "0"), i)
+        }
+        console.log(keys)
+        const k = pt.split("").map(v => keys.get(az.indexOf(v)))
+        console.log(k)
+        const groups = k.chunk(group_size)
+        console.log(groups)
+        const ct = []
+        for (var i = 0; i < groups.length; i++) {
+            const trigrams = groups[i]
+            console.log(trigrams)
+            const group = [[], [], []]
+            for (var j = 0; j < trigrams.length; j++) {
+                group[0].push(trigrams[j][0])
+                group[1].push(trigrams[j][1])
+                group[2].push(trigrams[j][2])
+            }
+            console.log(group)
+            const regroup = group.map(v => v.join("")).join("").chunk(3)
+            console.log(regroup)
+            ct.push(...regroup.map(v => az[values.get(v)]))
+        }
+        return ct.join("")
+    }
+}
+
+class Alberti {
+    static generateTable = function (key, az = az26) {
+        var table = '',
+            alphabet = az;
+        key = key ? key.toUpperCase().replace(/[\W]/, '') : '';
+
+        for (var i = 0; i < 26; i++) {
+            if (key.length) {
+                table += key[0];
+                alphabet = alphabet.replace(key[0], '');
+                key = key.replace(new RegExp(key[0], 'g'), '');
+            } else {
+                table += alphabet[0];
+                alphabet = alphabet.substring(1);
+            }
+        }
+        return table;
+    }
+
+    static encrypt = function (pt, key, offset, shift, period, az = az26) {
+        const rings = [
+            az,
+            key.shift(offset)
+        ]
+
+        const ct = []
+        for (var i = 0; i < pt.length; i++) {
+            const j = rings[0].indexOf(pt[i])
+            ct.push(rings[1][j])
+            // rings[0] = rings[0].shift(1)
+            if ((i + 1) % period == 0) {
+                rings[1] = rings[1].shift(shift)
+            }
+        }
+        return ct.join("")
+    }
+
+    static decrypt = function (keys, cipher, az = az26) {
+        var rings = [
+            az,
+            key
+        ];
+        var index = 0;
+
+        return cipher.split("").map(v => az.charAt(table[az.indexOf(v)])).join("")
+    }
+}
+
+class Chao {
+    constructor(ciphertextAlphabet, plaintextAlphabet) {
+        this.reinitialize = function () {
+            this.alphabets = [new Alphabet(ciphertextAlphabet), new Alphabet(plaintextAlphabet)]
+        }
+    }
+
+    process(text, select) {
+        this.reinitialize()
+        return text.split('').map(c => {
+            const lastConvertedLetter = this.alphabets[select].data.charAt(this.alphabets[1 - select].data.indexOf(c))
+            // Only convert characters in the source alphabet.
+            if (lastConvertedLetter === '') return c
+            this.alphabets[select].permute(lastConvertedLetter, 1 + select)
+            this.alphabets[1 - select].permute(c, 2 - select)
+            return lastConvertedLetter
+        }).join('')
+    }
+
+    static encrypt(pt, ct_az, pt_az) {
+        return new Chao(ct_az, pt_az).process(pt, 0)
+    }
+
+    static decrypt(ct, ct_az, pt_az) {
+        return new Chao(ct_az, pt_az).process(ct, 1)
+    }
+}
+
+class Homophonic2 {
+    static encrypt(pt, k, az) {
+        // k = [3,3,4,3,4,3,2,3,4,3,3,3,3,5,3,2,3,5,4,6,3,3,3,2,2,2]
+        const offsets = [0].concat(k.map((s => a => s += a)(0))).slice(0, k.length)
+        // console.log(offsets)
+        const buckets = Array.from({ length: k.length }, (_, i) => 0)
+        // console.log("buckets", buckets)
+
+        const ct = []
+        for (var i = 0; i < pt.length; i++) {
+            const c = az26.indexOf(pt[i])
+            const offset = offsets[c] + buckets[c]
+            ct.push(az[offset])
+            // console.log(offset)
+            buckets[c] = (buckets[c] + 1) % k[c]
+            // console.log("buckets", buckets)
+        }
+        return ct.join("")
+    }
+
+    static decrypt(ct, k, az) {
+        return Homophonic.decrypt(ct, k, az)
+    }
+}
+
+class Homophonic {
+    static encrypt(pt, k, az, az_pt = az26) {
+        const offsets = [0].concat(k.map((s => a => s += a)(0)))
+
+        const ct = []
+        for (var i = 0, j = 0; i < pt.length; i++, j += 1) {
+            const c = az_pt.indexOf(pt[i])
+            const ki = k[c]
+            const offset = offsets[c] + (j % ki)
+            ct.push(az[offset])
+            // ct.push(az[Integer.random(offsets[c], offsets[c + 1] - 1)])
+        }
+        return ct.join("")
+    }
+
+    static decrypt(ct, k, az, az_pt = az26) {
+        const offsets = [0].concat(k.map((s => a => s += a)(0))).slice(0, 26)
+        // console.log(offsets)
+
+        const pt = []
+        for (var i = 0; i < ct.length; i++) {
+            const index = az.indexOf(ct[i])
+            // console.log(index)
+            for (var j = 0; j < offsets.length; j++) {
+                if (j == az_pt.length - 1 || (index >= offsets[j] && index < offsets[j + 1])) {
+                    pt.push(az_pt[j])
+                    break
+                }
+            }
+        }
+
+        // console.log(pt.join(""))
+        return pt.join("")
+    }
+}  
 
 String.prototype.swap = function(c1, c2) {
     const s = this.split("")
@@ -1087,15 +1151,36 @@ String.prototype.shift = function(n) {
     return shift(this, n).join("")
 }
 
-String.prototype.ngrams = function(n, sliding = true, repeats = false) {
-    const ngrams = new Map()
-    for (var i = 0; i <= this.length - n; i += sliding ? 1 : n) {
-        const ngram = this.slice(i, i + n)
-        if (repeats && new Set(ngram).size > 1) { continue }
-        if (!ngrams.has(ngram)) { ngrams.set(ngram, 0)}
-        ngrams.set(ngram, ngrams.get(ngram) + 1)
+class Ngram {
+    constructor(s) {
+        this.s = s
+        this.difference = s.split("").map(v => v.charCodeAt(0) - 32).difference()[0]
+        this.indexes = new Set()
     }
-    return ngrams
+}
+
+class Ngrams {
+    static sum(ngrams) {
+        const m = new Map()
+        for (var i = 0; i < ngrams.length; i++) {
+            for (const ngram of ngrams[i]) {
+                if (!m.has(ngram.s)) { m.set(ngram.s, 0) }
+                m.set(ngram.s, m.get(ngram.s) + ngram.indexes.size)
+            }
+        }
+        return [...m].sort((a, b) => b[1] - a[1])
+    }
+}
+
+String.prototype.ngrams = function(length, min = 1, sliding = true, repeats = false) {
+    const ngrams = new Map()
+    for (var i = 0; i <= this.length - length; i += sliding ? 1 : length) {
+        const ngram = this.slice(i, i + length)
+        if (repeats && new Set(ngram).size > 1) { continue }
+        if (!ngrams.has(ngram)) { ngrams.set(ngram, new Ngram(ngram) )}
+        ngrams.get(ngram).indexes.add(i)
+    }
+    return [...ngrams.values()].filter(v => v.indexes.size >= min)
 }
 
 String.prototype.reverse = function() {
@@ -1272,6 +1357,34 @@ class Isomorph {
     }
 }
 
+class Isomorphs {
+    static shared(isomorphs, min = 2) {
+      const m = new Map()
+      for (var i = 0; i < isomorphs.length; i++) {
+        for (const isomorph of isomorphs[i]) {
+          // console.log(isomorph)
+          const pattern = isomorph.pattern()
+          if (!m.has(pattern)) { m.set(pattern, []) }
+          m.get(pattern).push(isomorph)
+        }
+      }
+    //   console.log(m)
+  
+      const shared = []
+      for (var i = 0; i < isomorphs.length; i++) {
+        shared[i] = []
+        for (const isomorph of isomorphs[i]) {
+          const pattern = isomorph.pattern()
+          if (m.get(pattern).length >= min) {
+            shared[i].push(isomorph)
+          }
+        }
+      }
+      return shared
+    }
+  }
+  
+
 Array.prototype.isomorphs = function(length = 2) {
     const isomorphs = []
     for (var i = 0; i <= this.length - length; i++) {
@@ -1398,8 +1511,8 @@ class Chi {
     }
 }
 
-String.prototype.nth = function(n) {
-    return [...this].filter((_, i) => (i) % n === 0).join('');
+String.prototype.nth = function(n, offset = 0) {
+    return [...this.slice(offset)].filter((_, i) => (i) % n === 0).join('');
 }
 
 Array.prototype.avg = function() {
@@ -1441,4 +1554,51 @@ Array.prototype.differences = function() {
 
 String.prototype.differences = function() {
     return this.split("").map(v => v.charCodeAt(0)).differences()
+}
+
+const chunk = (a, n) =>
+    Array.from(
+        new Array(Math.ceil(a.length / n)),
+        (_, i) => a.slice(i * n, i * n + n)
+    );
+
+Array.prototype.chunk = function(n) {
+    return chunk(this, n)
+}
+
+String.prototype.chunk = function(n) {
+    return this.split("").chunk(n).map(v => v.join(""))
+}
+
+// https://stackoverflow.com/questions/9960908/permutations-in-javascript
+Array.prototype.permute = function() {
+    var length = this.length,
+        result = [this.slice()],
+        c = new Array(length).fill(0),
+        i = 1, k, p;
+  
+    while (i < length) {
+      if (c[i] < i) {
+        k = i % 2 && c[i];
+        p = this[i];
+        this[i] = this[k];
+        this[k] = p;
+        ++c[i];
+        i = 1;
+        result.push(this.slice())
+        // this.slice()
+      } else {
+        c[i] = 0;
+        ++i;
+      }
+    }
+    return result;
+}
+
+String.prototype.permute = function() {
+    return this.split("").permute()
+}
+
+String.prototype.map = function(f) {
+    return this.split("").map(f)
 }

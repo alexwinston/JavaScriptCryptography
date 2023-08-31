@@ -80,6 +80,11 @@
       padding: 5px;
       border-radius: 5px; */
     }
+    .message-count {
+      font-size:9px;
+      color:rgb(159, 158, 158);
+      min-width:20px;
+    }
 
     .btn-randomize {
       right: 0;
@@ -147,16 +152,16 @@
     <!-- https://www.smashingmagazine.com/2020/01/data-components-vue-js/ -->
     <script type="text/x-template" id="messages-template">
       <!-- Text -->
-      <div :class="{ sticky: analysis.encrypt.value }">
+      <div :class="{ sticky: analysis.ciphering.value }">
         <div class="header">
-          <table class="gaps" style="margin: 15px 0px 0px 0px;">
+          <table class="gaps" style="margin: 10px 0px 0px 0px;">
             <tr>
               <td class="gap-counts" style="vertical-align: text-top;">Text:</td>
-              <td>
-                <span class="monospace">edit</span>
-              </td>
               <td style="vertical-align: middle;">
                 <input v-model="analysis.text_editing.value" style="margin: 0px -1px 1px 0px;" type="checkbox">
+              </td>
+              <td>
+                <span class="monospace">edit</span>
               </td>
               <td>
                 <span class="monospace" style="padding-left:5px;">az</span>
@@ -169,8 +174,15 @@
                 <button @click="analysis.az_reset()">Reset</button>
               </td>
             </tr>
-            <tr v-if="analysis.encrypt.value">
-              <span class="monospace" style="padding-left: 65px;">cipher</span> <input v-model="analysis.cipher.value" style="margin: 0px -1px 1px 0px; width: 800px; font-size: 12px;" type="text">
+            <!-- <tr v-if="analysis.ciphering.value"> -->
+            <tr>
+              <td td style="vertical-align: middle;">
+                <input v-model="analysis.ciphering.value" style="margin: 0px -1px 1px 5px;" type="checkbox">
+              </td>
+              <td>
+                <span class="monospace" style="">cipher</span>
+              </td>
+              <input v-model="analysis.cipher.value" style="margin: 0px -1px 1px 0px; width: 825px; font-size: 12px;" type="text">
               <button @click="view.cipher_help.show(analysis)" class="btn-alert">Help</button>
             </tr>
           </table>
@@ -182,8 +194,11 @@
         <div v-else class="messages">
           <table>
             <tr v-for="message in analysis.messages">
+              <td class="monospace message-count">
+                {{message.length}}
+              </td>
               <td v-for="(c) in message" class="monospace" :style="{ backgroundColor: analysis.char_color(c) }">
-                <div>{{c}}</div>
+                {{c}}
               </td>
             </tr>
           </table>
@@ -202,16 +217,16 @@
               <td style="padding-left: 5px;">IC</td>
             </tr>
             <tr v-for="frequency in analysis.frequencies" class="monospace frequency">
-              <td v-for="(s) in frequency.sorted" style="min-width:11px;">
-                <div style="font-size:11px; min-height: 14px; text-align: top;">{{s[0]}}</div>
-                <div style="font-size: 9px; margin-top: -2px; color:gray">{{s[1]}}</div>
+              <td v-for="(s) in frequency.sorted" style="min-width:10px;">
+                <div style="font-size:11px; min-height: 13px; text-align: top;">{{s[0]}}</div>
+                <div style="font-size: 8px; margin-top: -2px; color:gray">{{s[1]}}</div>
               </td>
               <td style="padding-left: 5px;">{{frequency.ic().toString().slice(0,6)}}</td>
             </tr>
             <tr class="monospace frequency" style="border-top: 1px solid darkgray;">
               <td v-for="(s) in analysis.frequency_totals?.sorted" style="padding-top: 3px;">
-                <div style="font-size:11px; min-height: 14px; text-align: top;">{{s[0]}}</div>
-                <div style="font-size: 9px; margin-top: -1px; color:gray">{{s[1]}}</div>
+                <div style="font-size:11px; min-height: 13px; text-align: top;">{{s[0]}}</div>
+                <div style="font-size: 8px; margin-top: -1px; color:gray">{{s[1]}}</div>
               </td>
               <td style="padding-left: 5px;">{{analysis.frequency_totals?.ic().toString().slice(0,6)}}</td>
             </tr>

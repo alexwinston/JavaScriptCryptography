@@ -1,4 +1,4 @@
-<template>
+<template functional>
     <div>
         <!-- Alignments Header -->
         <table class="header gaps" style="margin: 15px 0px 0px 0px;">
@@ -16,8 +16,12 @@
         <div class="messages">
             <table>
                 <tr v-for="(message, i) in analysis.messages">
-                    <td v-for="(c, j) in message" class="monospace" :style="{ backgroundColor: analysis.alignment_color(i, j) }">
-                        <div>{{ c }}</div>
+                    <td class="monospace message-count">
+                        {{ message.length }}
+                    </td>
+                    <td v-for="(c, j) in message" class="monospace"
+                        :style="{ backgroundColor: analysis.alignment_color(i, j) }">
+                        {{ c }}
                     </td>
                 </tr>
             </table>
