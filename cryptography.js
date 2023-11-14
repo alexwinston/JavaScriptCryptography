@@ -1,3 +1,4 @@
+const az25 = "ABCDEFGHIKLMNOPQRSTUVWXYZ"
 const az26 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const az36 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const az83 = Array.from({ length:83 }, (_, i) => String.fromCharCode(i + 32)).join("")
@@ -62,6 +63,89 @@ function decipher(ct, kt, az) {
     // console.log(pt)
 
     return pt//.join("")
+}
+
+class Caesar {
+    static encrypt(pt, k, az = az26, shift = Shift.additive) {
+        const az_offset = ABC.offset(az, -k)
+        // return Shift.cipher(pt, az[0], az_offset, [shift])
+        return Vigenere.encrypt(pt, az[0], az_offset)
+    }
+
+    static decrypt(ct, k, az = az26, shift = Shift.additive) {
+        const az_offset = ABC.offset(az, -k)
+        // return Shift.decipher(ct, az[0], az_offset, [shift])
+        return Vigenere.decrypt(ct, az[0], az_offset)
+    }
+
+    static levels(ct, size, az) {
+        const levels = [...Array(size)].map(_ => [])
+        console.log(levels)
+        for (var i = 0; i < ct.length; i++) {
+            const cc = ct[i]
+            const level = levels[Math.floor(cc / az.length)]
+            // console.log(cc, level)
+            level.push({ cc: cc, i: i })
+        }
+        return levels
+    }
+
+    static rundown(ct, az) {
+        const rundown = []
+        for (var i = 0; i < az.length; i++) {
+            const p = []
+            const az_shift = shift(az, i)
+            // console.log(az_shift)
+            for (var j = 0; j < ct.length; j++) {
+                const c = az_shift[ct[j] % az.length]
+                p.push(c)
+            }
+            const s = p.join("")
+            rundown.push({ s: s, fitness: Monograms.fitness(s) })
+        }
+        return rundown.sort((a, b) => b.fitness - a.fitness)
+    }
+
+    static arrange(levels, az) {
+        console.log("arrange", levels, az)
+        const alphabets = [...Array(levels.length)].map(_ => az.split(""))
+        console.log(alphabets)
+
+        const generatrices = levels.map(v => Caesar.rundown(v.map(v => v.cc), az25)[0])
+        console.log(generatrices)
+        const pt = []
+        for (var i = 0; i < levels.length; i++) {
+            const level = levels[i]
+            for (var j = 0; j < level.length; j++) {
+                const c = generatrices[i].s[j]
+                const cc = level[j].cc
+                // console.log(c, cc)
+                pt[level[j].i] = c
+                alphabets[i] = ABC.offset(ABC.shift(az, c), -Math.floor(cc % az.length))
+                // console.log("alphabet", alphabets)
+            }
+        }
+        return pt.join("")
+    }
+}
+
+class Linear {
+    static f = (m, a) => ({
+        shift: (p, k, i, az = az26) => ABC.wrap(az, ((p + 1) * m + a).mod(az.length) - 1),
+        unshift: (p, k, i, az = az26) => ABC.wrap(az, Multiplicative.inverse((p + 1), m, az.length) - 1)
+    })
+
+    static encrypt(pt, m, a, az = az26) {
+        return Shift.encrypt(pt, "", az, [Linear.f(m, a)])
+    }
+
+    static decrypt(ct, k, az = az26) {
+        return Shift.decrypt(ct, "", az, [Linear.f(k)])
+    }
+
+    static inverse(n, multiplier, modulus) {
+        return (n * Mod.inverse(multiplier, modulus)).mod(modulus)
+    }
 }
 
 class Shift {
@@ -161,6 +245,35 @@ class Vigenere {
 //     static encrypt = Vigenere.cipher
 //     static decrypt = Vigenere.decipher
 // }
+
+class Quagmire {
+    static encrypt(pt, kt, az_pt = az26, az_kt = az26) {
+        // console.log("cipher", pt, kt, az_pt, az_kt)
+        // const pi = pt.split("").map(v => az_pt.indexOf(v))
+        const pi = pt.split("").reduce((r,v) => { const i = az_pt.indexOf(v); if (i >= 0) { r.push(i) }; return r }, [])
+        const k = kt.split("").map(v => az_kt.indexOf(v))
+        const ki = pi.map((v, i) => k[i % (k.length)])
+        const sums = pi.map((v, i) => pi[i] + ki[i])
+        const mods = sums.map(v => v % (az_kt.length))
+        const ct = mods.map(v => az_kt[v])
+    
+        return ct.join("")
+    }
+
+    static decrypt(ct, kt, az_pt = az26, az_kt = az26) {
+        // console.log("decipher", ct, kt, az_pt, az_kt)
+        // const ci = ct.split("").map(v => az_kt.indexOf(v))
+        const ci = ct.split("").reduce((r,v) => { const i = az_kt.indexOf(v); if (i >= 0) { r.push(i) }; return r }, [])
+        const k = kt.split("").map(v => az_kt.indexOf(v))
+        const ki = ci.map((v, i) => k[i % (k.length)])
+        const sums = ci.map((v, i) => (ci[i] - ki[i]) + az_kt.length)
+        const mods = sums.map((v, i) => v % (az_kt.length))
+        const pt = mods.map(v => az_pt[v])
+    
+        return pt.join("")
+    }
+}
+
 
 // https://macs4200.org/chapters/07/4/autokey-cipher.html
 // https://www.cryptool.org/en/cto/autokey
@@ -407,37 +520,36 @@ class Hill {
 
         let m = hill.det;
         if (hill.det < 0) {
-            m = this.getRidOfNeg(this.det, this.n);
+            m = hill.getRidOfNeg(hill.det, hill.n);
         }
         m = m % hill.n;
 
-        console.log("n: " + hill.n);
-        console.log("m:  " + m);
+        // console.log("n: " + hill.n);
+        // console.log("m:  " + m);
 
         let modularInv = hill.modularInverse(m, hill.n);
         let matrixInv = hill.inverseMatrix(hill.key);
-        console.log(modularInv);
-
+        // console.log("modular inverse", modularInv);
 
         for (let index = 0; index < cipher.length; index += 3) {
-            let x = this.alphbetics.indexOf(cipher[index]);
-            let y = this.alphbetics.indexOf(cipher[index + 1]);
-            let z = this.alphbetics.indexOf(cipher[index + 2]);
-            console.log("dec: " + [x, y, z]);
+            let x = hill.alphbetics.indexOf(cipher[index]);
+            let y = hill.alphbetics.indexOf(cipher[index + 1]);
+            let z = hill.alphbetics.indexOf(cipher[index + 2]);
+            // console.log("dec: " + [x, y, z]);
 
-            let res = this.multiplyMatrix(matrixInv, [x, y, z]);
-            console.log("matinv: " + res);
+            let res = hill.multiplyMatrix(matrixInv, [x, y, z]);
+            // console.log("matinv: " + res);
 
             for (let i = 0; i < res.length; i++) {
                 res[i] *= modularInv;
-                console.log("res[" + i + "]:  " + res[i]);
+                // console.log("res[" + i + "]:  " + res[i]);
 
                 if (res[i] < 0) {
-                    res[i] = this.getRidOfNeg(res[i], this.n);
+                    res[i] = hill.getRidOfNeg(res[i], hill.n);
                 }
-                let j = res[i] % this.n;
+                let j = res[i] % hill.n;
 
-                plain += this.alphbetics[j];
+                plain += hill.alphbetics[j];
             }
         }
         return plain;
@@ -472,12 +584,24 @@ class Mod {
     }
 }
 
+class Xor {
+    static inverse(a, m) {
+        for(let x = 0; x < m; x++)
+            if (((a % m) ^ (x % m)) % m == 0)
+                return x;
+    
+        return 0
+    }
+}
+
 // https://www.researchgate.net/publication/304913747_A_Study_on_Network_Security_Services_with_Cryptography_and_an_Implementation_of_Vigenere-_Multiplicative_Cipher
 // https://macs4200.org/chapters/04/5/multiplicative-cipher.html
 class Multiplicative {
     static f = (m) => ({
-        shift: (p, k, i, az = az26) => (p * m).mod(az.length),
-        unshift: (p, k, i, az = az26) => Multiplicative.inverse(p, m, az.length)
+        // shift: (p, k, i, az = az26) => (p * m).mod(az.length),
+        // unshift: (p, k, i, az = az26) => Multiplicative.inverse(p, m, az.length)
+        shift: (p, k, i, az = az26) => ABC.wrap(az, ((p + 1) * m).mod(az.length) - 1),
+        unshift: (p, k, i, az = az26) => ABC.wrap(az, Multiplicative.inverse((p + 1), m, az.length) - 1)
     })
 
     static encrypt(pt, k, az = az26) {
@@ -579,6 +703,51 @@ class Numbers {
         return Numbers.gcd(b % a, a);
     }
 
+    static primes(max) {
+        var sieve = [], i, j, primes = [];
+        for (i = 2; i <= max; ++i) {
+            if (!sieve[i]) {
+                // i has not been marked -- it is prime
+                primes.push(i);
+                for (j = i << 1; j <= max; j += i) {
+                    sieve[j] = true;
+                }
+            }
+        }
+        return primes;
+    }
+
+    static eulers(n) {
+        const eulers = []
+        for (var i = 0; i < n; i++) {
+            eulers.push(this.phi(i))
+        }
+        return eulers
+    }
+
+    static phi(n) {
+        // return Greater Common Denominator of two given numbers
+        function gcd(a, b) {
+          if (a === 0) {
+            return b;
+          }
+      
+          return gcd(b % a, a);
+        }
+      
+        // init
+        var result = 1;
+      
+        // walk through all integers up to n
+        for (let i = 2; i < n; i++) {
+          if (gcd(i, n) === 1) {
+            result++;
+          }
+        }
+      
+        return result;
+      }
+
     static random = (min,max) => Math.floor((crypto.getRandomValues(new Uint32Array(1))[0] / 2**32) * (max - min) + min)
 }
 
@@ -595,6 +764,11 @@ class ABC {
         }
         return ascii.join("")
         // return Array.from({ length:256 }, (_, i) => String.fromCharCode(i)).join("").shift(offset).slice(0, length)
+    }
+
+    static wrap(az, i) {
+        if (i >= 0) { return i }
+        return i + az.length 
     }
 
     // TODO rename to offset?
@@ -618,7 +792,7 @@ class ABC {
         return s.split("").filter(v => az.split("").includes(v)).join("")
     }
 
-    static key(k, az) {
+    static key(k, az = az26) {
         return abc(k, az).join("")
     }
 
@@ -943,9 +1117,10 @@ class Progressive {
         for (var i = start; i < pt.length; i += every) {
             for (var j = 0; j < every; j++) {
                 const c = pt[i + j]
+                // console.log(az_shift, c)
                 ct.push(az_shift[az.indexOf(c)])
             }
-            az_shift = az_shift.shift(shift)
+            az_shift = az_shift.shift(-shift)
         }
         return ct.join("")
     }
@@ -953,15 +1128,45 @@ class Progressive {
 
 // Shifts az by offset each char
 class A83Z {
-    static encrypt(pt, e, offset, az = az26) {
+    static encrypt(pt, e, offset, az = az26, az_ct = az26) {
       const a83z = []
       for (var i = 0; i < pt.length; i++) {
         // const shift = (i * 36) % az.length
         const shift = ((i**e) * offset) % az.length
-        const az_shift = az.shift(shift).slice(0,26)
-        // console.log(shift, az_shift)
-        const az_i = az26.indexOf(pt[i])
+        const az_shift = az.shift(shift).slice(0,az_ct.length)
+        console.log(shift, az_shift)
+        const az_i = az_ct.indexOf(pt[i])
         a83z.push(az_shift[az_i])
+      }
+      return a83z.join("")
+    }
+}
+
+// class A83Z {
+//     static encrypt(pt, az = az83) {
+//       const a83z = []
+//       for (var i = 0, az_i = 0; i < pt.length; i++) {
+//         // const shift = (i * 36) % az.length
+//         // const shift = ((i**e) * offset) % az.length
+//         az_i += az26.indexOf(pt[i])
+//         // const az_shift = az.shift(az_i).slice(0,26)
+//         // const az_shift = az.shift(az_i).slice(0,26)
+//         // console.log(az_i, az_shift)
+//         a83z.push(az[(az_i+=(i % 27)) % az.length])
+//       }
+//       return a83z.join("")
+//     }
+// }
+
+class Winston {
+    static encrypt(pt, increment, az = az26) {
+      const a83z = []
+      for (var i = 0, shift = 0; i < pt.length; i++, shift += increment) {
+        const az_i = az26.indexOf(pt[i])
+        // shift = (shift + az_i + 33) % az.length
+        const az_shift = az.shift(shift % az.length).slice(0,26)
+        // console.log(shift)
+        a83z.push(az_shift[(az_i + i) % az26.length])
       }
       return a83z.join("")
     }
@@ -969,31 +1174,31 @@ class A83Z {
 
 class Trifid {
     static encrypt(pt, size, group_size, az) {
-        console.log(az)
+        // console.log(az)
         const keys = new Map()
         const values = new Map()
         for (var i = 0; i < size ** 3; i++) {
             keys.set(i, i.toString(size).padStart(3, "0"))
             values.set(i.toString(size).padStart(3, "0"), i)
         }
-        console.log(keys)
+        // console.log(keys)
         const k = pt.split("").map(v => keys.get(az.indexOf(v)))
-        console.log(k)
+        // console.log(k)
         const groups = k.chunk(group_size)
-        console.log(groups)
+        // console.log(groups)
         const ct = []
         for (var i = 0; i < groups.length; i++) {
             const trigrams = groups[i]
-            console.log(trigrams)
+            // console.log(trigrams)
             const group = [[], [], []]
             for (var j = 0; j < trigrams.length; j++) {
                 group[0].push(trigrams[j][0])
                 group[1].push(trigrams[j][1])
                 group[2].push(trigrams[j][2])
             }
-            console.log(group)
+            // console.log(group)
             const regroup = group.map(v => v.join("")).join("").chunk(3)
-            console.log(regroup)
+            // console.log(regroup)
             ct.push(...regroup.map(v => az[values.get(v)]))
         }
         return ct.join("")
@@ -1076,8 +1281,9 @@ class Chao {
     }
 }
 
+// https://discord.com/channels/453998283174576133/817530812454010910/1161111845596307586
 class Homophonic2 {
-    static encrypt(pt, k, az) {
+    static encrypt(pt, k, az, az_pt = az26) {
         // k = [3,3,4,3,4,3,2,3,4,3,3,3,3,5,3,2,3,5,4,6,3,3,3,2,2,2]
         const offsets = [0].concat(k.map((s => a => s += a)(0))).slice(0, k.length)
         // console.log(offsets)
@@ -1086,7 +1292,7 @@ class Homophonic2 {
 
         const ct = []
         for (var i = 0; i < pt.length; i++) {
-            const c = az26.indexOf(pt[i])
+            const c = az_pt.indexOf(pt[i])
             const offset = offsets[c] + buckets[c]
             ct.push(az[offset])
             // console.log(offset)
@@ -1148,18 +1354,104 @@ String.prototype.swap = function(c1, c2) {
 }
 
 String.prototype.shift = function(n) {
-    return shift(this, n).join("")
+    return shift(this, -n).join("")
+}
+
+// http://practicalcryptography.com/cryptanalysis/letter-frequencies-various-languages/english-letter-frequencies/
+class English {
+    static letters = az26
+    static frequencies = [0.0815, 0.0144, 0.0276, 0.0379, 0.1311, 0.0292, 0.0199, 0.0526, 0.0635, 0.0013, 0.0042, 0.0339, 0.0254, 0.0710, 0.08, 0.0198, 0.0012, 0.0683, 0.061, 0.1047, 0.0246, 0.0092, 0.0154, 0.0017, 0.0198, 0.0008]
+    // static letters = "ETAOINSRHLDCUMFGPWYBVKJXZQ"
+    // static frequencies = [529117365,390965105,374061888,326627740,320410057,313720540,294300210,277000841,216768975,183996130,169330528,138416451,117295780,110504544,95422055,91258980,90376747,79843664,75294515,70195826,46337161,35373464,9613410,8369915,4975847,4550166]
+
+    static frequency(c) {
+        return this.frequencies[this.letters.indexOf(c)]
+    }
+}
+
+class Monograms {
+    // The higher the fitness score the more language like it is
+    static fitness(pt, language = English) {
+        const fitness = pt.map(v => language.frequency(v))
+        // const ngrams = pt.ngrams(1)
+        // const fitness = ngrams.map(v => Math.log(v.indexes.size / English.frequency(v.s)))
+        // console.log(pt, fitness)
+        return fitness.reduce((p, c) => p + c, 0)
+    }
+
+    static key(ct, length, az = az26) {
+        const key = []
+        for (var i = 0; i < length; i++) {
+            const ct_nth = ct.substring(i).nth(length)
+            // const ct5 = ct8.substring(1).nth(5)
+            const fitnesses = []
+            for (var c of az) {
+                fitnesses.push({ c: c, fitness: this.fitness(Vigenere.decrypt(ct_nth, c, az)) })
+            }
+            const sorted = fitnesses.sort((a, b) => b.fitness - a.fitness || isNaN(b.fitness) - isNaN(a.fitness))
+            // console.log(sorted)
+            key.push(sorted[0].c)
+        }
+        return key.join("")
+    }
+}
+
+// http://practicalcryptography.com/cryptanalysis/text-characterisation/quadgrams/
+class Quadgrams {
+    static grams = new Map()
+
+    static async load(file) {
+        console.log("Quadgrams.load", file)
+        await fetch(file)
+            .then(response => response.text())
+            .then(data => {
+                this.grams.clear()
+                for (const i of data.split("\n")) {
+                    const gram = i.split(" ")
+                    this.grams.set(gram[0], parseInt(gram[1]))
+                }
+                const n = Array.from(this.grams.values()).reduce((p, c) => p + c, 0)
+                // console.log(n)
+                for (const [k, v] of this.grams) {
+                    this.grams.set(k, -Math.log10(this.grams.get(k) / n))
+                }
+                this.floor = Math.log10(0.01 / n)
+                // console.log(this.grams.get("NTHE")) // 11234972
+            })
+    }
+
+    // The fitness is more language like the closer it is to zero
+    static fitness(pt, unknown = this.floor) {
+        // const fitness = pt.map(v => English.frequency(v))
+        const ngrams = pt.ngrams(4)
+        // console.log(ngrams)
+        const fitness = ngrams.map(v => this.grams.has(v.s) ? this.grams.get(v.s) : unknown)
+        // console.log(pt, fitness)
+        return fitness.reduce((p, c) => p + c, 0)
+    }
 }
 
 class Ngram {
     constructor(s) {
         this.s = s
-        this.difference = s.split("").map(v => v.charCodeAt(0) - 32).difference()[0]
+        // this.difference = s.split("").map(v => v.charCodeAt(0) - 32).difference()[0]
         this.indexes = new Set()
     }
 }
 
 class Ngrams {
+    static shared(ngrams, min = 2) {
+        const shared = new Map()
+        for (const [i, v] of ngrams.entries()) {
+            for (const ngram of v) {
+                if (!shared.has(ngram.s)) { shared.set(ngram.s, [] )}
+                shared.get(ngram.s)[i] = ngram.indexes
+            }
+        }
+        // TODO filter ngrams that don't repeat at least min times
+        return shared
+    }
+
     static sum(ngrams) {
         const m = new Map()
         for (var i = 0; i < ngrams.length; i++) {
@@ -1172,6 +1464,12 @@ class Ngrams {
     }
 }
 
+Set.prototype.push = function(a) {
+    for (const v of a) {
+        this.add(v)
+    }
+}
+
 String.prototype.ngrams = function(length, min = 1, sliding = true, repeats = false) {
     const ngrams = new Map()
     for (var i = 0; i <= this.length - length; i += sliding ? 1 : length) {
@@ -1180,7 +1478,7 @@ String.prototype.ngrams = function(length, min = 1, sliding = true, repeats = fa
         if (!ngrams.has(ngram)) { ngrams.set(ngram, new Ngram(ngram) )}
         ngrams.get(ngram).indexes.add(i)
     }
-    return [...ngrams.values()].filter(v => v.indexes.size >= min)
+    return [...ngrams.values()].filter(v => v.indexes.size >= min).sort((a,b) => b.indexes.size - a.indexes.size)
 }
 
 String.prototype.reverse = function() {
@@ -1511,13 +1809,32 @@ class Chi {
     }
 }
 
+class Counts {
+    constructor() {
+        this.map = new Map()
+    }
+
+    add(v, n = 1) {
+        if (!this.map.has(v)) { this.map.set(v, 0) }
+        this.map.set(v, this.map.get(v) + n)
+    }
+
+    get(v) {
+        return this.map.get(v)
+    }
+
+    sort(filter = (v) => true) {
+        return Array.from(this.map).sort((a,b) => b[1] - a[1]).filter(v => filter(v))
+    }
+}
+
 String.prototype.nth = function(n, offset = 0) {
     return [...this.slice(offset)].filter((_, i) => (i) % n === 0).join('');
 }
 
 Array.prototype.avg = function() {
     return this.reduce((a, b) => a + b) / this.length
-};
+}
 
 String.prototype.ic = function(min, max, az = az26) {
     const ic_avg = []
@@ -1570,13 +1887,44 @@ String.prototype.chunk = function(n) {
     return this.split("").chunk(n).map(v => v.join(""))
 }
 
+Array.prototype.equals = function (a) {
+    console.log(this, a)
+    if (this.length === a.length) {
+        for (var i = 0; i < this.length; i++) {
+            if (this[i] !== a[i]) { return false }
+        }
+        return true
+    }
+    return false
+}
+
+Array.prototype.has = function(a) {
+    for (const v of this) {
+        console.log(v)
+        if (v.equals(a)) { 
+            return true
+        }
+    }
+    return false
+}
+
+Array.prototype.set = function() {
+    const set = []
+    for (const v of this) {
+        if (!set.has(v)) {
+            set.push(v)
+        }
+    }
+    return set
+}
+
 // https://stackoverflow.com/questions/9960908/permutations-in-javascript
-Array.prototype.permute = function() {
+Array.prototype.permute = function(r = this.length) {
     var length = this.length,
-        result = [this.slice()],
+        result = [this.slice(0,r)],
         c = new Array(length).fill(0),
         i = 1, k, p;
-  
+
     while (i < length) {
       if (c[i] < i) {
         k = i % 2 && c[i];
@@ -1585,20 +1933,42 @@ Array.prototype.permute = function() {
         this[k] = p;
         ++c[i];
         i = 1;
-        result.push(this.slice())
-        // this.slice()
+
+        const s = this.slice(0,r)
+        result.push(s)
       } else {
         c[i] = 0;
         ++i;
       }
     }
+
     return result;
 }
 
-String.prototype.permute = function() {
-    return this.split("").permute()
+String.prototype.permute = function(r = this.length) {
+    return this.split("").permute(r)
+}
+
+String.prototype.enumerate = function(n) {
+    const enumerations = []
+    for (var i = 0; i < n; i++) {
+        enumerations.push(this.split(""))
+    }
+    return enumerations.reduce((a,b) => a.flatMap(x => b.map(y => x + y)), [''])
 }
 
 String.prototype.map = function(f) {
     return this.split("").map(f)
+}
+
+String.prototype.frequencies = function() {
+    return new Frequencies(this)
+}
+
+String.prototype.filter = function(az = az26) {
+    return this.split("").filter(v => az.includes(v)).join("")
+}
+
+Array.prototype.range = function(n, m) {
+    return Array.from({ length: m - n }, (_,i) => i)
 }

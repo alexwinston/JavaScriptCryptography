@@ -65,14 +65,14 @@ Array.prototype.last = function() {
     return this[this.length - 1]
 }
 
-Array.prototype.set = function(o) {
-    for (var i = 0; i < this.length; i++) {
-        // if (this[i].equals(o)) { return this; }
-        if (this[i].equals(o)) { return this; }
-    }
-    this.push(o)
-    return this
-}
+// Array.prototype.set = function(o) {
+//     for (var i = 0; i < this.length; i++) {
+//         // if (this[i].equals(o)) { return this; }
+//         if (this[i].equals(o)) { return this; }
+//     }
+//     this.push(o)
+//     return this
+// }
 
 class Modal {
   constructor() {
@@ -164,6 +164,9 @@ class Analysis {
         this.counts = Object.freeze([])
         this.kappa_periodic = Object.freeze([])
         this.kappa_autocorrelation = Object.freeze([])
+        this.ngrams = Object.freeze([])
+        this.ngrams_length = new Observable(2, this)
+        this.ngrams_min = new Observable(2, this)
         this.alignment_unique = new Observable(false, this)
         this.gaps_min = new Observable(0, this)
         this.gaps_max = new Observable(16, this)
@@ -230,6 +233,34 @@ class Analysis {
 
     difference_color(i,j) {
       return this.color_gradient[this.differences[i][j]]
+    }
+
+    ngram_color(i,j) {
+      return this.ratio_color(this.ngrams[i]?.get(j))
+    }
+
+    ngram(messages, length, min = 2, sliding = true, repeats = false) {
+      const shared = Ngrams.shared(messages.map(v => v.ngrams(length, 1, sliding, repeats)), min) // TODO min
+      console.log("ngrams", shared)
+
+      const ngrams = Array.from({ length: messages.length }, (_,i) => new Map())
+      console.log(ngrams)
+      for (const [ngram, rows] of shared) {
+        // console.log(ngram, rows)
+        for (const [i, indexes] of rows.entries()) {
+          // Ngram must have some indexes and the min number across all rows or the current row
+          if (indexes && (shared.get(ngram).filter(v => v).length >= min || indexes.size >= min)) {
+            for (const j of indexes) {
+              // console.log(ngram, i, indexes, j)
+              for (var k = 0; k < ngram.length; k++) {
+                ngrams[i].set(j + k, ngram.length)
+              }
+            }
+          }
+        }
+      }
+      
+      return ngrams
     }
 
     alignment_color(i,j) {
@@ -411,9 +442,10 @@ class Analysis {
 
     on_change() {
         this.messages = this.format(this.text.split("\n"), this.az.value)
-        console.log(this.messages.join("\n"))
+        // console.log(this.messages.join("\n"))
         this.messages_max = this.messages.longest().length
         // this.differences = this.messages.map(v => v.difference())
+        this.ngrams = this.ngram(this.messages, this.ngrams_length.get(), this.ngrams_min.get())
         this.alignments = this.messages.alignments()
         this.gaps = (this.gaps_aligned.get() ? this.alignments : this.messages)
             .map(v => Gaps.map(v.gaps(this.gaps_min.get(), this.gaps_max.get()), this.gap_ends.get()))
@@ -464,20 +496,185 @@ String.prototype.chunk = function(n) {
   return chunk(this.split(""), n).map(v => v.join(""))
 }
 
+class Trifid2 {
+  // https://en.wikipedia.org/wiki/Trifid_cipher
+  constructor(key = 3, az = az26 + " ") {
+      this.key = key
+      const offset = { 3: 65, 4: 32, 5: 0}
+      const length = this.key**this.key
+      // const tabula = Array.from({ length }, (_, i) => i + offset[this.key])
+      const tabula = az.split("").map(v => v.charCodeAt(0))
+      // console.log("tabula", tabula)
+      this.z = Array(this.key).fill().map(e => Array(this.key).fill().map(e => Array(this.key).fill("").map(e => e)));
+
+      let c = 0
+      for (var i = 0; i < this.key; i++) {
+          for (var j = 0; j < this.key; j++) {
+              for (let k = 0; k < this.key; k++) {
+                  const char = String.fromCharCode(tabula[c++])
+                  // console.log(i,j,k,char)
+                  this.z[i][j][k] = char
+              }
+          }
+      }
+      // console.log([this.z])
+  }
+
+  scan(c, reverse = false) {
+      const key = this.key
+      for (var i = 0; i < key; i++) {
+          for (var j = 0; j < key; j++) {
+              for (let k = 0; k < key; k++) {
+                  if (this.z[i][j][k] === c) {
+                      const s = i.toString() + j.toString() + k.toString()
+                      // console.log(c, i, j, k, s)
+                      return reverse ? s.split("").reverse().join("") : s
+                  }
+              }
+          }
+      }
+      console.log("undefined", c)
+      return undefined
+  }
+
+  encipher(s, size) {
+      let encipher = []
+      Array.from(s).forEach(c => { encipher.push(this.scan(c)) })
+      // console.log("encipher", encipher)
+
+      const groupings = Math.floor(s.length / size)
+      // console.log("groupings", groupings)
+      const remainder = s.length % (groupings * size)
+      // console.log(groupings, remainder)
+      let groups = Array.from(Array(3), _ => Array())
+      for (var i = 0; i < encipher.length; i++) {
+          groups[0].push(encipher[i].charAt(0))
+          groups[1].push(encipher[i].charAt(1))
+          groups[2].push(encipher[i].charAt(2))
+      }
+      // console.log("groups", groups)
+
+      let grouped = Array.from(Array(groupings), _ => Array.from(Array(3), _ => ""))
+      for (var i = 0; i < groupings; i++) {
+          groups[i]
+          for (var j = 0; j < size; j++) {
+              grouped[i][0] += groups[0][(i * size) + j]
+              grouped[i][1] += groups[1][(i * size) + j]
+              grouped[i][2] += groups[2][(i * size) + j]
+          }
+      }
+      // console.log("grouped", grouped)
+
+      let remainders = Array.from(Array(3), _ => "")
+      for (var j = groupings * size; j < s.length; j++) {
+          remainders[0] += groups[0][j]
+          remainders[1] += groups[1][j]
+          remainders[2] += groups[2][j]
+      }
+      // console.log(remainders)
+
+      return [size, grouped, remainder, remainders]
+  }
+
+  encrypt(cipher) {
+      console.log("cipher", cipher)
+
+      const size = cipher[0]
+      const grouped = cipher[1]
+      const remain = cipher[2]
+      const remainders = cipher[3]
+
+      let ct = ""
+      for (var i = 0; i < grouped.length; i++) {
+          const group = grouped[i].join("")
+          console.log(group)
+          for (var j = 0; j < size; j++) {
+              const a = parseInt(group.charAt((j * 3) + 0))
+              const b = parseInt(group.charAt((j * 3) + 1))
+              const c = parseInt(group.charAt((j * 3) + 2))
+              console.log(a, b, c)
+              ct += this.z[a][b][c]
+          }
+      }
+
+      const remainder = remainders.join("")
+      console.log("remainder", remainder)
+      for (var i = 0; i < remain; i++) {
+          const a = parseInt(remainder.charAt((i * 3) + 0))
+          const b = parseInt(remainder.charAt((i * 3) + 1))
+          const c = parseInt(remainder.charAt((i * 3) + 2))
+          // console.log(a, b, c)
+          ct += this.z[a][b][c]
+      }
+
+      return ct
+  }
+
+  decrypt(s, size, reverse = false) {
+      const groupings = Math.floor(s.length / size)
+      const remainder = s.length % (groupings * size)
+      // console.log("decrypt", groupings, remainder)
+
+      let groups = ""
+      for (var i = 0; i < s.length; i++) {
+          groups += this.scan(s.charAt(i), false)
+      }
+      const grouped = groups.match(new RegExp('.{1,' + (3 * size) + '}', 'g'));
+      // console.log("grouped", grouped)
+
+      let decrypted = ""
+      for (var i = 0; i < groupings; i++) {
+          const group = grouped[i].match(new RegExp('.{1,' + (size) + '}', 'g'))
+          for (var j = 0; j < size; j++) {
+              // NOTE Reversed index
+              const a = group[reverse ? 2 : 0].charAt(j)
+              const b = group[1].charAt(j)
+              const c = group[reverse ? 0 : 2].charAt(j)
+              decrypted += this.z[a][b][c]
+          }
+      }
+
+      if (remainder) {
+          const group = grouped[i].match(new RegExp('.{1,' + (remainder) + '}', 'g'))
+          for (var i = 0; i < remainder; i++) {
+              // NOTE Reversed index
+              const a = group[reverse ? 2 : 0].charAt(i)
+              const b = group[1].charAt(i)
+              const c = group[reverse ? 0 : 2].charAt(i)
+              decrypted += this.z[a][b][c]
+          }
+      }
+
+      // console.log("decrypted", decrypted)
+      return decrypted
+  }
+}
+
 const az = ABC.ascii(32, 83)
 // const az = ABC.ascii(42, 83)
+// const az = ABC.ascii(48, 42)
 // const az = az125.shift(32).slice(0, 122)
 // const az = ABC.ascii(0, 125)
 console.log(az)
 
+const ct = [
+  ["223213143444012301422234443102123223413140231224143201313444342",
+  "232120434113223421123041134432122103440431221234032124304114410"]
+]
+
+const messages = decode(10, [0,1,2,3,4], az)
 // const permutations = [0,1,2,3,4].permute()
 // permutations.forEach(v => decode(7, v, az))
 // const messages = decode(7, [2,1,0,3,4], az)
 // const messages = decode(10, [4,3,2,1,0], ABC.ascii(0, 125))
-const messages = decode(10, [0,1,2,3,4], az)
+// const messages = decode(1, [0,1,2,3,4], az125, ct)
+// const messages = decode(0, [0,1,2,3,4], az125)
+console.log("messages", messages)
+console.log(messages.map(v => Eyes.base(v, 5)))
+console.log(messages.map(v => Eyes.base(v, 10)))
 
-const eyes = new Analysis(messages.join("\n"), az, false, "Homophonic.decrypt(pt, [5,1,1,2,11,2,2,3,5,2,2,4,3,5,7,1,1,4,4,8,2,1,2,1,2,2], az)")
-const comparison = new Analysis(pt.join("\n"), az, true, "Homophonic.encrypt(pt, [5,1,1,2,11,2,2,3,5,2,2,4,3,5,7,1,1,4,4,8,2,1,2,1,2,2], az)")
+const eyes = new Analysis(messages.join("\n"), az, false, "Homophonic.decrypt(pt, [6,1,1,2,11,2,2,3,5,1,2,4,2,5,7,1,1,4,4,9,2,1,2,1,2,2], az)")
+const comparison = new Analysis(pt.join("\n"), az, true, "Homophonic2.encrypt(pt, [5,1,1,2,11,2,2,3,5,2,2,4,3,5,7,1,1,4,4,8,2,1,2,1,2,2], az)")
 
 const view = new View(eyes, comparison)
 
@@ -530,7 +727,9 @@ class Cipher {
 }
 
 { 
-  const k = [5,1,1,2,11,2,2,3,5,2,2,4,3,5,7,1,1,4,4,8,2,1,2,1,2,2]
+  // const k = [5,1,1,2,11,2,2,3,5,2,2,4,3,5,7,1,1,4,4,8,2,1,2,1,2,2]
+  // const k = [6,1,1,2,11,2,2,3,5,1,2,4,2,5,7,1,1,4,4,9,2,1,2,1,2,2]
+  const k = [6,1,2,2,9,2,2,3,6,2,2,4,2,5,7,2,1,4,4,8,2,2,2,1,2,1]
   console.log("reduce", k.reduce((c,p) => c + p, 0))
 
   // const ct = Homophonic.encrypt("AZTHISLAZYDOGEMERGENCYBROADCAST", k, az83)
@@ -546,7 +745,8 @@ class Cipher {
   console.log(Kappa.positional(messages, 50))
 }
 
-// TODO N-gram counts, max w/ multiples
+// TODO N-gram counts, max w/ multiples, AKA Repeats
+// https://discordapp.com/channels/453998283174576133/817530812454010910/1147070654676471828
 {
   const m = new Map()
   messages.forEach(v => {
@@ -571,7 +771,7 @@ class Cipher {
 
 // TODO Entropy
 
-// N-grams but only consider the first min number of chars
+// N-grams but group and only consider the first min number of chars
 String.prototype.grams = function(length, min = 1, sliding = true) {
   const ngrams = new Map()
     for (var i = 0; i <= this.length - length; i += sliding ? 1 : length) {
@@ -590,10 +790,10 @@ String.prototype.grams = function(length, min = 1, sliding = true) {
   // console.log(messages[0].grams(2,1))
   const m = new Map()
   for (var i = 0; i < messages.length; i++) {
-    const grams = messages[i].grams(2,1)
+    const grams = messages[i].grams(3,2)
     grams.forEach((v,k) => { if (!m.has(k)) { m.set(k,[]) }; m.get(k).push(...v) })
   }
-  // console.log(m)
+  console.log("grams", m)
   // console.log("grams", [...m.values()].sort((a,b) => b.length - a.length))
 }
 
@@ -633,10 +833,11 @@ String.prototype.grams = function(length, min = 1, sliding = true) {
   console.log(gaps)
 }
 
+// REPLACE w/ ABC.step???
 String.prototype.step = function(n) {
   const step = []
   for (var i = 0, j = 0, k = 1; i < this.length; i++, j+=n) {
-    console.log(j, j / this.length)
+    // console.log(j, j / this.length)
     if (j >= this.length) { j = k++ }
     step.push(this[j % this.length])
   }
@@ -644,9 +845,76 @@ String.prototype.step = function(n) {
 }
 
 {
-  console.log("differences", messages[3].difference().map(v => String.fromCharCode(v + 32)).join(""))
+  // console.log("differences", messages[3].difference().map(v => String.fromCharCode(v + 32)).join(""))
 }
 
 { 
-  console.log(messages.map(v => v.map(w => w.charCodeAt(0) - 32).join("")))
+  console.log(Winston.encrypt("AAAAAA", 0, az83))
+  console.log(Winston.encrypt("ABCDEF", 0, az83))
+  console.log(Winston.encrypt("ZZZZZZ", 0, az83))
+  console.log(Winston.encrypt("AZAZAZ", 0, az83))
+}
+
+// TODO Iterate all decodings and create frequencies then check unusually high most frequent char count
+
+// TODO Differences pt.difference().map(v => String.fromCharCode(parseInt(v) + 32)).join("")
+
+// Lymm
+// ?:'c;H?ep.-PE-XAlrWK:H0^hY`LNF;r0!N8T2mi];Bp;_ip2_Z9&\cS8Ti2."O9X3kg[9@n9]gnqlK8n"Lp$?7BSOF(1TO&jB
+// ?:'c;H?ep.-PE-XAlrWK:H0^r%:lNF;rMb@nT2mi];Bp;_ip2_07RJUfbY;DqK&;lG-^FB6gnIg8BI^8\c+#.?;2gp@Ia*fA1[6Q3i
+// ?:'c;H?ep.-PE-XAlrWK:H0^ Nb@Q2<n+k1X6d&W2kI1-!RY4R#-4I#Gr*;:.clB+XS5[PL&TiG"[9!pdBI$Bfp$9f7bm+*qS\2D_ \To4o"IeN>9P_GW
+  
+// THIS_REACTION_IS_BANNED_COPPER+[FROZEN_ALUMINIUM]_OXIDE+OIL>FROZEN_ALUMINIUM_OXIDE_(INACTIVE)+SALT
+// THIS_REACTION_IS_BANNED_SILVER+[MOLTEN_ALUMINIUM]_(INACTIVE)>[MOLTEN_ALUMINIUM]_(INACTIVE)+VOID_LIQUID
+// THIS_REACTION_IS_BANNED_ELECTRICITY+[MOLTEN_ALUMINIUM]_(ACTIVE)+PLAYER>[MOLTEN_ALUMINIUM]_(ACTIVE)+INTERMEDIATE+SMOKE
+
+console.log(az25[parseInt("23", 10)])
+console.log(az25[parseInt("10", 10)])
+console.log(az25[parseInt("02", 10)])
+
+class Blocknere {
+  static encrypt(pt, k, size, az = az26) {
+    const ct = []
+    const k_split = k.split("")
+
+    const chunks = pt.chunk(size)
+    // console.log(chunks)
+    for (var i = 0 ; i < chunks.length; i++) {
+      // console.log(chunks[i], k_split[i % k.length])
+      ct.push(Vigenere.encrypt(chunks[i], k_split[i % k.length], az))
+    }
+    return ct.join("")
+  }
+}
+
+console.log(Blocknere.encrypt("THISISATESTOFTHEEMERGENCYBROADCASTSYSTEM", "i!i", 7, az83))
+
+{
+  const k = "POLITICS"
+  const ct  = Progressive.encrypt("historywillbekindtomeforiintendtowriteit".toUpperCase(), 0, 0, k.length, 3, az26)
+  console.log(ct)
+  const ct2 = Vigenere.encrypt(ct, k, az26)
+  console.log(ct2)
+}
+
+{
+  console.log("phi", Numbers.eulers(100))
+  console.log(Numbers.gcf(messages.map(v => v.length)))
+}
+
+{
+  const remainders = new Map()
+  for (const message of messages) {
+    for (const [i, c] of message.split("").entries()) {
+      if (!remainders.has(c)) { remainders.set(c, [] )}
+      remainders.get(c).push(i % 2)
+    }
+  }
+  console.log(remainders)
+}
+
+{
+  for (const message of messages) {
+    console.log(message.map(v => parseInt(v.charCodeAt(0) - 32).toString(5).padStart(3,"0")).chunk(26))
+  }
 }

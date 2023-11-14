@@ -5,6 +5,9 @@
 
   <link href='css/fonts.css' rel='stylesheet' type='text/css'>
 
+  <!-- <script src="en_words.js"></script> -->
+  <!-- <script src="en_quadgrams.txt"></script> -->
+
   <script src="canvasjs.min.js"></script>
 
   <script src="vue2.min.js"></script>
@@ -298,6 +301,7 @@
 
       <!-- <div class="messages" style="font-size: 14px;">N-grams</div> -->
           
+      <ngrams v-for="analysis in view.analyses" :analysis="analysis"></ngrams>
       <alignments v-for="analysis in view.analyses" :analysis="analysis"></alignments>
       <gaps v-for="analysis in view.analyses" :analysis="analysis"></gaps>
       <isomorphs v-for="analysis in view.analyses" :analysis="analysis"></isomorphs>
@@ -327,6 +331,7 @@
         },
         components: {
           VueMzcModal,
+          "ngrams": httpVueLoader("./components/ngrams.vue"),
           "alignments": httpVueLoader("./components/alignments.vue"),
           "gaps": httpVueLoader("./components/gaps.vue"),
           "isomorphs": httpVueLoader("./components/isomorphs.vue")
